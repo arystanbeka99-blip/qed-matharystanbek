@@ -249,7 +249,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
           <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10" />
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 bg-white/15 rounded-2xl px-3 py-1.5 text-white text-xs font-medium mb-3 sm:mb-4">
-              <GraduationCap className="w-3.5 h-3.5" /> ОГЭ · ЕГЭ
+              <GraduationCap className="w-3.5 h-3.5" /> Аттестация · ЕНТ
             </div>
             <h2 className="text-white text-xl sm:text-2xl font-bold tracking-tight mb-1.5">Подготовка к экзаменам</h2>
             <p className="text-white/85 text-sm max-w-sm">Варианты, разборы заданий и тренажёры для выпускных классов.</p>
@@ -489,7 +489,7 @@ function Paywall({ onBack }) {
     "КСП/КТП по всем четвертям",
     "Интерактивные игры и тренажёры",
     "Инструменты рефлексии для класса",
-    "Материалы для ОГЭ и ЕГЭ",
+    "Материалы для итоговой аттестации и ЕНТ",
     "Новые материалы каждую неделю",
   ];
 
