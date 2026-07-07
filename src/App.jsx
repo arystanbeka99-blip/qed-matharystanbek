@@ -6,7 +6,7 @@ import {
   Star, Zap, ShieldCheck, Menu, X, LayoutGrid,
 } from "lucide-react";
 import { useSubscription } from "./hooks/useSubscription";
-import { supabase } from "./lib/supabaseClient";
+import { supabase, fetchMaterials } from "./lib/supabaseClient";
 import CanvaViewer from "./components/CanvaViewer";
 import PirateGame from "./components/PirateGame";
 import PercentLabyrinth from "./components/PercentLabyrinth";
@@ -71,11 +71,12 @@ function SoftIcon({ icon: Icon, tint }) {
   );
 }
 
-function Header({ onLogoClick, onMenuToggle, isPro, onSignOut }) {
+function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail }) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <header className="flex items-center gap-2 sm:gap-4 mb-6 sm:mb-8">
+    <header className="flex items-center gap-2 sm:gap-4 mb-6 sm:mb-8 relative">
       {/* Бургер только на мобильном */}
       <button
         onClick={onMenuToggle}
@@ -126,13 +127,42 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut }) {
         <span className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-2 h-2 rounded-full bg-[#FF6B4A]" />
       </button>
 
-      <button
-        onClick={onSignOut}
-        className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center hover:shadow-md transition-shadow shrink-0"
-        title="Выйти из аккаунта"
-      >
-        <User className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-slate-500" />
-      </button>
+      {/* Профиль: клик открывает меню, а не сразу выходит из аккаунта */}
+      <div className="relative shrink-0">
+        <button
+          onClick={() => setProfileOpen((p) => !p)}
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center hover:shadow-md transition-shadow"
+        >
+          <User className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-slate-500" />
+        </button>
+
+        {profileOpen && (
+          <>
+            {/* Клик вне меню закрывает его */}
+            <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
+            <div className="absolute right-0 top-12 z-40 w-60 bg-white rounded-2xl border border-slate-100 shadow-xl p-2">
+              <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
+                <div className="text-xs text-slate-400">Вы вошли как</div>
+                <div className="text-sm font-semibold text-slate-800 truncate">{userEmail}</div>
+                {isPro && (
+                  <div className={`inline-flex items-center gap-1 mt-2 ${GRAD_EXAM} text-white text-[10px] font-bold rounded-lg px-2 py-1`}>
+                    <Crown className="w-3 h-3" /> QED PRO
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  onSignOut();
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-50 transition-colors"
+              >
+                Выйти из аккаунта
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Раскрывающийся поиск для мобильного, второй строкой */}
       {searchOpen && (
@@ -325,13 +355,41 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
 function MaterialsPage({ initialType, isPro, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool }) {
   const [activeType, setActiveType] = useState(initialType || "presentations");
   const type = MATERIAL_TYPES.find((m) => m.id === activeType);
-  const items = DEMO_MATERIALS[activeType] || [];
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchMaterials({ type: activeType })
+      .then((rows) => {
+        if (cancelled) return;
+        // Приводим поля из базы (snake_case) к формату, который ждёт интерфейс
+        const mapped = rows.map((r) => ({
+          title: r.title,
+          grade: r.grade,
+          tag: r.tag,
+          locked: !r.is_free,
+          canvaUrl: r.canva_url,
+          fileUrl: r.file_url,
+          gameId: r.game_id,
+          toolId: r.tool_id,
+        }));
+        setItems(mapped);
+      })
+      .catch((err) => console.error("Не удалось загрузить материалы:", err.message))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeType]);
 
   const handleOpen = (item) => {
     if (item.locked && !isPro) return onOpenPaywall();
     if (item.canvaUrl) return onOpenCanva(item);
     if (item.gameId) return onOpenGame(item.gameId);
     if (item.toolId) return onOpenTool(item.toolId);
+    if (item.fileUrl) return window.open(item.fileUrl, "_blank");
   };
 
   return (
@@ -360,8 +418,14 @@ function MaterialsPage({ initialType, isPro, onBack, onOpenPaywall, onOpenCanva,
 
       <div className="flex items-center justify-between px-1">
         <h2 className="text-slate-900 font-bold text-lg tracking-tight">{type?.label}</h2>
-        <span className="text-xs text-slate-400 font-medium">{items.length} материала</span>
+        <span className="text-xs text-slate-400 font-medium">{loading ? "загрузка..." : `${items.length} материала`}</span>
       </div>
+
+      {!loading && items.length === 0 && (
+        <div className="rounded-3xl bg-white border border-slate-100 p-10 text-center">
+          <div className="text-slate-400 text-sm">Материалов пока нет — добавьте их в таблицу materials в Supabase.</div>
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         {items.map((item, i) => {
@@ -596,7 +660,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F4F6FA] font-sans relative">
       <div className="max-w-6xl mx-auto px-5 py-6">
-        <Header onLogoClick={() => setView("dashboard")} isPro={isPro} onSignOut={() => supabase.auth.signOut()} />
+        <Header onLogoClick={() => setView("dashboard")} isPro={isPro} onSignOut={() => supabase.auth.signOut()} userEmail={session?.user?.email} />
 
         {view === "dashboard" && <Dashboard onOpenMaterials={openMaterials} onOpenPaywall={() => setView("paywall")} />}
 
