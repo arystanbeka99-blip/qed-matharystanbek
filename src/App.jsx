@@ -365,7 +365,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
    СТРАНИЦА МАТЕРИАЛОВ
    ============================================================ */
 
-function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool, onOpenFile }) {
+function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subscribedGrades, examPrepBonus, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool, onOpenFile }) {
   const [activeType, setActiveType] = useState(initialType || "presentations");
   const [grade, setGrade] = useState(initialGrade || null);
   const [quarter, setQuarter] = useState(initialQuarter || null);
@@ -385,19 +385,29 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, onBac
           if (orderDiff !== 0) return orderDiff;
           return (a.topic || "").localeCompare(b.topic || "", "ru");
         });
-        // Приводим поля из базы (snake_case) к формату, который ждёт интерфейс
-        const mapped = sorted.map((r) => ({
-          title: r.title,
-          grade: r.grade,
-          quarter: r.quarter,
-          topic: r.topic,
-          tag: r.tag,
-          locked: !r.is_free,
-          canvaUrl: r.canva_url,
-          fileUrl: r.file_url,
-          gameId: r.game_id,
-          toolId: r.tool_id,
-        }));
+        // Приводим поля из базы (snake_case) к формату, который ждёт интерфейс.
+        // Материал открыт, если: он помечен бесплатным (is_free), это
+        // ознакомительный урок (is_preview — видят все зарегистрированные
+        // учителя), или у учителя активна подписка на этот класс
+        // (или это 9 класс и есть бонус подготовки к ЕНТ).
+        const mapped = sorted.map((r) => {
+          const grantedByPlan =
+            isPro && ((subscribedGrades || []).includes(r.grade) || (examPrepBonus && r.grade === 9));
+          const unlocked = r.is_free || r.is_preview || grantedByPlan;
+          return {
+            title: r.title,
+            grade: r.grade,
+            quarter: r.quarter,
+            topic: r.topic,
+            tag: r.tag,
+            isPreview: r.is_preview,
+            locked: !unlocked,
+            canvaUrl: r.canva_url,
+            fileUrl: r.file_url,
+            gameId: r.game_id,
+            toolId: r.tool_id,
+          };
+        });
         setItems(mapped);
       })
       .catch((err) => console.error("Не удалось загрузить материалы:", err.message))
@@ -405,10 +415,10 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, onBac
     return () => {
       cancelled = true;
     };
-  }, [activeType, grade, quarter]);
+  }, [activeType, grade, quarter, isPro, subscribedGrades, examPrepBonus]);
 
   const handleOpen = (item) => {
-    if (item.locked && !isPro) return onOpenPaywall();
+    if (item.locked) return onOpenPaywall();
     if (item.canvaUrl) return onOpenCanva(item);
     if (item.gameId) return onOpenGame(item.gameId);
     if (item.toolId) return onOpenTool(item.toolId);
@@ -486,7 +496,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, onBac
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         {items.map((item, i) => {
-          const locked = item.locked && !isPro;
+          const locked = item.locked;
           return (
             <div key={i} className="relative rounded-3xl bg-white border border-slate-100 p-5 flex flex-col gap-4 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between">
@@ -495,6 +505,9 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, onBac
                   <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
                     <Lock className="w-3.5 h-3.5 text-slate-400" />
                   </div>
+                )}
+                {!locked && item.isPreview && (
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1">Бесплатно</span>
                 )}
               </div>
               <div>
@@ -535,30 +548,42 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, onBac
    PAYWALL
    ============================================================ */
 
+const PRICING_TIERS = [
+  { id: "month", label: "Месяц", price: "10 000 ₸", perMonth: "10 000 ₸ / мес", badge: null },
+  { id: "half_year", label: "6 месяцев", price: "45 000 ₸", perMonth: "7 500 ₸ / мес", badge: "Выгода 25%" },
+  { id: "year", label: "12 месяцев", price: "100 000 ₸", perMonth: "8 333 ₸ / мес", badge: "Популярный" },
+];
+
 function Paywall({ onBack }) {
-  const [plan, setPlan] = useState("year");
+  const [plan, setPlan] = useState("half_year");
+  const [selectedGrades, setSelectedGrades] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const plans = [
-    { id: "month", label: "Месяц", price: "3 990 ₸", period: "/ мес", badge: null },
-    { id: "year", label: "Год", price: "1 990 ₸", period: "/ мес", badge: "Выгода 50%" },
-  ];
+  const toggleGrade = (g) => {
+    setSelectedGrades((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  };
+
   const features = [
-    "Все презентации 5–11 классов",
+    "Презентации выбранных классов",
     "КСП/КТП по всем четвертям",
     "Интерактивные игры и тренажёры",
     "Инструменты рефлексии для класса",
-    "Материалы для итоговой аттестации и ЕНТ",
+    "Бонус: подготовка к ЕНТ (9 класс)",
     "Новые материалы каждую неделю",
   ];
 
   /**
    * Создаёт Stripe Checkout Session на бэкенде (см. src/api/create-checkout-session.js)
-   * и перенаправляет учителя на страницу оплаты.
+   * и перенаправляет учителя на страницу оплаты. Выбранные классы передаются
+   * в metadata, чтобы webhook записал их в subscriptions.grades при оплате.
    */
   const handleCheckout = async () => {
     setError(null);
+    if (selectedGrades.length === 0) {
+      setError("Выберите хотя бы один класс, к которому нужен доступ.");
+      return;
+    }
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -572,7 +597,7 @@ function Paywall({ onBack }) {
       const res = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, userId: user.id, email: user.email }),
+        body: JSON.stringify({ plan, userId: user.id, email: user.email, grades: selectedGrades }),
       });
       const data = await res.json();
 
@@ -594,32 +619,57 @@ function Paywall({ onBack }) {
         <div className={`inline-flex items-center gap-1.5 ${GRAD_EXAM} text-white text-xs font-semibold rounded-2xl px-3 py-1.5`}>
           <Crown className="w-3.5 h-3.5" /> QED PRO
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Полный доступ ко всем материалам</h1>
-        <p className="text-slate-500 text-sm max-w-md mx-auto">Один тариф — все классы, все четверти, все типы материалов без ограничений.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Выберите классы и период</h1>
+        <p className="text-slate-500 text-sm max-w-md mx-auto">Платите только за нужные классы. 9 класс — с бонусом подготовки к ЕНТ.</p>
       </div>
 
-      <div className="flex flex-col xs:flex-row justify-center gap-3">
-        {plans.map((p) => {
+      {/* Тарифы по длительности */}
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+        {PRICING_TIERS.map((p) => {
           const active = plan === p.id;
           return (
             <button
               key={p.id}
               onClick={() => setPlan(p.id)}
-              className={`relative rounded-3xl px-6 py-4 sm:min-w-[150px] text-left transition-all border ${
+              className={`relative rounded-2xl sm:rounded-3xl px-3 sm:px-5 py-3.5 sm:py-4 text-left transition-all border ${
                 active ? `${GRAD_MAIN} text-white border-transparent shadow-lg` : "bg-white border-slate-100 text-slate-700 hover:border-indigo-200"
               }`}
               style={active ? { boxShadow: "0 14px 30px -12px rgba(79,70,229,0.5)" } : {}}
             >
               {p.badge && (
-                <span className="absolute -top-2.5 right-3 bg-[#FFA800] text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">{p.badge}</span>
+                <span className="absolute -top-2.5 left-2 right-2 sm:left-3 sm:right-auto bg-[#FFA800] text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-lg text-center sm:text-left">
+                  {p.badge}
+                </span>
               )}
-              <div className={`text-xs font-semibold ${active ? "text-white/80" : "text-slate-400"}`}>{p.label}</div>
-              <div className="text-lg font-bold mt-1">
-                {p.price} <span className={`text-xs font-medium ${active ? "text-white/70" : "text-slate-400"}`}>{p.period}</span>
-              </div>
+              <div className={`text-[11px] sm:text-xs font-semibold ${active ? "text-white/80" : "text-slate-400"} mt-1.5 sm:mt-0`}>{p.label}</div>
+              <div className="text-sm sm:text-lg font-bold mt-1">{p.price}</div>
+              <div className={`text-[10px] sm:text-xs font-medium ${active ? "text-white/70" : "text-slate-400"}`}>{p.perMonth}</div>
             </button>
           );
         })}
+      </div>
+
+      {/* Выбор классов */}
+      <div className="rounded-3xl bg-white border border-slate-100 p-5">
+        <h3 className="font-bold text-slate-800 text-sm mb-1">Какие классы нужны?</h3>
+        <p className="text-xs text-slate-400 mb-3.5">Можно выбрать несколько — цена тарифа не меняется от количества</p>
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+          {GRADES.map((g) => {
+            const active = selectedGrades.includes(g);
+            return (
+              <button
+                key={g}
+                onClick={() => toggleGrade(g)}
+                className={`rounded-xl py-3 flex flex-col items-center justify-center border transition-all ${
+                  active ? `${GRAD_MAIN} text-white border-transparent` : "bg-slate-50 border-slate-100 text-slate-600 hover:border-indigo-200"
+                }`}
+              >
+                <span className="text-sm font-bold">{g}</span>
+                {g === 9 && <span className={`text-[8px] font-semibold ${active ? "text-white/80" : "text-amber-500"}`}>+ЕНТ</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="rounded-3xl bg-white border border-slate-100 p-5 sm:p-7" style={{ boxShadow: "0 20px 45px -25px rgba(79,70,229,0.35)" }}>
@@ -674,7 +724,7 @@ export default function App() {
   const [activeTool, setActiveTool] = useState(null);
   const [session, setSession] = useState(undefined); // undefined = проверяется, null = не авторизован
 
-  const { isPro, plan, periodEnd } = useSubscription();
+  const { isPro, plan, periodEnd, grades: subscribedGrades, examPrepBonus } = useSubscription();
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -754,6 +804,8 @@ export default function App() {
             initialGrade={materialsFilter.grade}
             initialQuarter={materialsFilter.quarter}
             isPro={isPro}
+            subscribedGrades={subscribedGrades}
+            examPrepBonus={examPrepBonus}
             onBack={() => setView("dashboard")}
             onOpenPaywall={() => setView("paywall")}
             onOpenCanva={(item) => setCanvaItem(item)}
