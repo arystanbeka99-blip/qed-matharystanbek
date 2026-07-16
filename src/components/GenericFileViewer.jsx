@@ -14,11 +14,17 @@ import { X, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
  * Content-Type (из-за чего браузер показывал "сырой" код вместо
  * отрисованной страницы) — srcDoc всегда рендерится как HTML,
  * независимо от того, что говорит сервер.
+ *
+ * Кнопка "Открыть в новой вкладке" раньше вела прямо на файл в Supabase
+ * и упиралась в ту же проблему. Теперь мы создаём собственную
+ * blob-ссылку с правильным типом text/html — она открывается корректно
+ * в новой вкладке, даже если Supabase всё ещё путает тип файла.
  */
 export default function GenericFileViewer({ open, onClose, title, fileUrl }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [htmlContent, setHtmlContent] = useState(null);
+  const [blobUrl, setBlobUrl] = useState(null);
 
   const isHtmlFile = (fileUrl || "").toLowerCase().split("?")[0].match(/\.html?$/);
 
@@ -39,6 +45,10 @@ export default function GenericFileViewer({ open, onClose, title, fileUrl }) {
         })
         .then((text) => {
           setHtmlContent(text);
+          // Собственная blob-ссылка с правильным типом — для кнопки
+          // "Открыть в новой вкладке" и для скачивания
+          const blob = new Blob([text], { type: "text/html;charset=utf-8" });
+          setBlobUrl(URL.createObjectURL(blob));
           setLoading(false);
         })
         .catch((err) => {
@@ -49,6 +59,14 @@ export default function GenericFileViewer({ open, onClose, title, fileUrl }) {
       // PDF и другие файлы — открываем как обычно, у них таких проблем не бывает
       setLoading(false);
     }
+
+    // Освобождаем память от предыдущей blob-ссылки при каждом новом открытии
+    return () => {
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
   }, [open, fileUrl]);
 
   useEffect(() => {
@@ -58,6 +76,10 @@ export default function GenericFileViewer({ open, onClose, title, fileUrl }) {
   }, [open, onClose]);
 
   if (!open) return null;
+
+  // Для HTML используем нашу blob-ссылку (гарантированно открывается
+  // правильно), для остальных файлов — обычную ссылку на Supabase
+  const externalLinkHref = isHtmlFile && blobUrl ? blobUrl : fileUrl;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
@@ -73,7 +95,7 @@ export default function GenericFileViewer({ open, onClose, title, fileUrl }) {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <a
-              href={fileUrl}
+              href={externalLinkHref}
               target="_blank"
               rel="noopener noreferrer"
               className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors"
