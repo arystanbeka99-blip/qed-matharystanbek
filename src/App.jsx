@@ -417,6 +417,31 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
     };
   }, [activeType, grade, quarter, isPro, subscribedGrades, examPrepBonus]);
 
+  // Для рабочих листов и КСП/КТП файл нужно СКАЧАТЬ как документ,
+  // а не открывать в окне просмотра — учитель обычно распечатывает
+  // или редактирует такие материалы у себя на компьютере.
+  const downloadAsDocument = async (item) => {
+    try {
+      const res = await fetch(item.fileUrl);
+      if (!res.ok) throw new Error("Файл не найден");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const fileName = item.fileUrl.split("/").pop().split("?")[0] || `${item.title}.pdf`;
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = decodeURIComponent(fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Не удалось скачать файл:", err.message);
+      // Запасной вариант — просто открыть ссылку напрямую
+      window.open(item.fileUrl, "_blank");
+    }
+  };
+
   const handleOpen = (item) => {
     if (item.locked) return onOpenPaywall();
     if (item.canvaUrl) return onOpenCanva(item);
@@ -528,6 +553,21 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                 >
                   <Lock className="w-3.5 h-3.5" /> Открыть по подписке
                 </button>
+              ) : activeType === "worksheets" || activeType === "ksp" ? (
+                <div className="mt-1 flex gap-2">
+                  <button
+                    onClick={() => handleOpen(item)}
+                    className={`flex-1 rounded-2xl ${GRAD_MAIN} text-white text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5 hover:opacity-95 transition-opacity`}
+                  >
+                    <PlayCircle className="w-3.5 h-3.5" /> Открыть
+                  </button>
+                  <button
+                    onClick={() => downloadAsDocument(item)}
+                    className="flex-1 rounded-2xl bg-slate-100 text-slate-700 text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5 hover:bg-slate-200 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Скачать
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleOpen(item)}
