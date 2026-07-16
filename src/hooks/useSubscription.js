@@ -54,6 +54,10 @@ export function useSubscription() {
     isPro: Boolean(subscription),
     plan: subscription?.plan ?? null,
     periodEnd: subscription?.current_period_end ?? null,
+    // Классы, на которые оформлена подписка (учитель выбирает при покупке)
+    grades: subscription?.grades ?? [],
+    // Бонус доступа к материалам для 9 класса (итоговая аттестация)
+    examPrepBonus: subscription?.exam_prep_bonus ?? false,
     loading,
     refresh: () => {
       setLoading(true);
