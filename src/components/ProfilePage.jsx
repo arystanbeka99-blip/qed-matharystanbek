@@ -16,7 +16,9 @@ const GRAD_EXAM = "bg-gradient-to-br from-[#FF6B4A] to-[#FFA800]";
 export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, periodEnd, userEmail }) {
   const [profile, setProfile] = useState(null);
   const [editingName, setEditingName] = useState(false);
+  const [editingSchool, setEditingSchool] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [schoolInput, setSchoolInput] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
       if (!cancelled && row) {
         setProfile(row);
         setNameInput(row.full_name || "");
+        setSchoolInput(row.school || "");
       }
     });
     return () => {
@@ -35,16 +38,16 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
     };
   }, []);
 
-  const saveName = async () => {
+  const saveField = async (field, value, closeEditor) => {
     setSaving(true);
     const { data } = await supabase.auth.getUser();
     const uid = data?.user?.id;
     if (uid) {
-      await supabase.from("profiles").update({ full_name: nameInput }).eq("id", uid);
-      setProfile((p) => ({ ...p, full_name: nameInput }));
+      await supabase.from("profiles").update({ [field]: value }).eq("id", uid);
+      setProfile((p) => ({ ...p, [field]: value }));
     }
     setSaving(false);
-    setEditingName(false);
+    closeEditor(false);
   };
 
   const initials = (profile?.full_name || userEmail || "У")
@@ -84,12 +87,12 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
                   autoFocus
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && saveName()}
+                  onKeyDown={(e) => e.key === "Enter" && saveField("full_name", nameInput, setEditingName)}
                   className="bg-white/20 border border-white/30 rounded-xl px-3 py-1.5 text-white placeholder-white/60 text-lg font-bold outline-none w-full max-w-[220px]"
                   placeholder="Имя и фамилия"
                 />
                 <button
-                  onClick={saveName}
+                  onClick={() => saveField("full_name", nameInput, setEditingName)}
                   disabled={saving}
                   className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0"
                 >
@@ -132,9 +135,35 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
           <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
             <School className="w-4.5 h-4.5 text-purple-500" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-[11px] text-slate-400 font-medium">Школа</div>
-            <div className="text-sm font-bold text-slate-800 truncate">{profile?.school || "Не указана"}</div>
+            {editingSchool ? (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <input
+                  autoFocus
+                  value={schoolInput}
+                  onChange={(e) => setSchoolInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveField("school", schoolInput, setEditingSchool)}
+                  placeholder="Название школы"
+                  className="text-sm font-bold text-slate-800 outline-none border-b border-purple-300 w-full min-w-0"
+                />
+                <button
+                  onClick={() => saveField("school", schoolInput, setEditingSchool)}
+                  disabled={saving}
+                  className="w-6 h-6 rounded-lg bg-purple-50 flex items-center justify-center shrink-0"
+                >
+                  <Check className="w-3.5 h-3.5 text-purple-600" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setEditingSchool(true)}
+                className="flex items-center gap-1.5 text-sm font-bold text-slate-800 truncate"
+              >
+                {profile?.school || "Не указана"}
+                <Edit3 className="w-3 h-3 text-slate-300 shrink-0" />
+              </button>
+            )}
           </div>
         </div>
       </div>
