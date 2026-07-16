@@ -549,10 +549,37 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
    ============================================================ */
 
 const PRICING_TIERS = [
-  { id: "month", label: "Месяц", price: "10 000 ₸", perMonth: "10 000 ₸ / мес", badge: null },
-  { id: "half_year", label: "6 месяцев", price: "45 000 ₸", perMonth: "7 500 ₸ / мес", badge: "Выгода 25%" },
-  { id: "year", label: "12 месяцев", price: "100 000 ₸", perMonth: "8 333 ₸ / мес", badge: "Популярный" },
+  { id: "month", label: "Месяц", price: "10 000 ₸", priceValue: 10000, perMonth: "10 000 ₸ / мес", months: 1, badge: null },
+  { id: "half_year", label: "6 месяцев", price: "45 000 ₸", priceValue: 45000, perMonth: "7 500 ₸ / мес", months: 6, badge: "Выгода 25%" },
+  { id: "year", label: "12 месяцев", price: "100 000 ₸", priceValue: 100000, perMonth: "8 333 ₸ / мес", months: 12, badge: "Популярный" },
 ];
+
+/**
+ * Подгружает скрипт платёжного виджета CloudPayments один раз и переиспользует его.
+ */
+function loadCloudPaymentsWidget() {
+  return new Promise((resolve, reject) => {
+    if (window.cp) return resolve(window.cp);
+    const existing = document.querySelector("script[data-cp-widget]");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.cp));
+      existing.addEventListener("error", () => reject(new Error("Не удалось загрузить платёжный виджет")));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://widget.cloudpayments.ru/bundles/cloudpayments.js";
+    script.dataset.cpWidget = "true";
+    script.onload = () => resolve(window.cp);
+    script.onerror = () => reject(new Error("Не удалось загрузить платёжный виджет"));
+    document.head.appendChild(script);
+  });
+}
+
+// Номер WhatsApp, куда учителя пишут для ручного оформления оплаты (Kaspi).
+// Когда захотите включить автоматическую оплату — верните вызов
+// loadCloudPaymentsWidget() / CloudPayments, код для этого уже готов
+// в git-истории (компонент Paywall, функция handleCheckout).
+const ADMIN_WHATSAPP = "77767844108";
 
 function Paywall({ onBack }) {
   const [plan, setPlan] = useState("half_year");
@@ -574,9 +601,11 @@ function Paywall({ onBack }) {
   ];
 
   /**
-   * Создаёт Stripe Checkout Session на бэкенде (см. src/api/create-checkout-session.js)
-   * и перенаправляет учителя на страницу оплаты. Выбранные классы передаются
-   * в metadata, чтобы webhook записал их в subscriptions.grades при оплате.
+   * Пока оплата принимается вручную через Kaspi: кнопка открывает WhatsApp
+   * с уже готовым сообщением (тариф, выбранные классы, почта учителя).
+   * После получения оплаты откройте доступ вручную:
+   * Supabase → Table Editor → subscriptions → Insert row
+   * (user_id учителя, plan, grades, status: active, current_period_end).
    */
   const handleCheckout = async () => {
     setError(null);
@@ -594,15 +623,16 @@ function Paywall({ onBack }) {
         return;
       }
 
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, userId: user.id, email: user.email, grades: selectedGrades }),
-      });
-      const data = await res.json();
+      const tier = PRICING_TIERS.find((p) => p.id === plan);
+      const message =
+        `Здравствуйте! Хочу оформить подписку QED PRO.\n` +
+        `Тариф: ${tier.label} (${tier.price})\n` +
+        `Классы: ${selectedGrades.sort((a, b) => a - b).join(", ")}\n` +
+        `Моя почта на сайте: ${user.email}`;
 
-      if (!res.ok) throw new Error(data.error || "Не удалось начать оплату");
-      window.location.href = data.url; // редирект на Stripe Checkout
+      const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
+      setLoading(false);
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -689,13 +719,13 @@ function Paywall({ onBack }) {
           className={`w-full ${GRAD_MAIN} text-white font-bold text-sm py-4 rounded-2xl flex items-center justify-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-60`}
           style={{ boxShadow: "0 14px 30px -10px rgba(79,70,229,0.55)" }}
         >
-          <Zap className="w-4 h-4" /> {loading ? "Переходим к оплате..." : "Оформить QED PRO"}
+          <MessageCircleHeart className="w-4 h-4" /> {loading ? "Открываем WhatsApp..." : "Написать для оплаты в WhatsApp"}
         </button>
         {error && (
           <div className="mt-3 text-center text-xs font-medium text-rose-500">{error}</div>
         )}
         <div className="flex items-center justify-center gap-1.5 mt-4 text-slate-400 text-xs">
-          <ShieldCheck className="w-3.5 h-3.5" /> Безопасная оплата · Отмена в любой момент
+          <ShieldCheck className="w-3.5 h-3.5" /> Оплата на Kaspi · Доступ откроется после подтверждения
         </div>
       </div>
 
