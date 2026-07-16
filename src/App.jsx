@@ -3,11 +3,13 @@ import {
   Search, Bell, User, ChevronRight, Sparkles, GraduationCap,
   PlayCircle, FileText, Gamepad2, MessageCircleHeart, Lock,
   Check, Snowflake, Flower2, Sun, Leaf, ArrowLeft, Crown,
-  Star, Zap, ShieldCheck, Menu, X, LayoutGrid,
+  Star, Zap, ShieldCheck, Menu, X, LayoutGrid, BookOpen, ClipboardList, Download,
 } from "lucide-react";
 import { useSubscription } from "./hooks/useSubscription";
 import { supabase, fetchMaterials } from "./lib/supabaseClient";
 import CanvaViewer from "./components/CanvaViewer";
+import GenericFileViewer from "./components/GenericFileViewer";
+import ProfilePage from "./components/ProfilePage";
 import PirateGame from "./components/PirateGame";
 import PercentLabyrinth from "./components/PercentLabyrinth";
 import ReflectionTool from "./components/ReflectionTool";
@@ -33,6 +35,8 @@ const MATERIAL_TYPES = [
   { id: "ksp", label: "КСП / КТП", desc: "Поурочные и календарные планы", icon: FileText, tint: "from-violet-500 to-purple-500", soft: "bg-violet-50" },
   { id: "games", label: "Игры", desc: "Интерактивные тренажёры и квесты", icon: Gamepad2, tint: "from-fuchsia-500 to-pink-500", soft: "bg-fuchsia-50" },
   { id: "reflection", label: "Рефлексии", desc: "Инструменты обратной связи с классом", icon: MessageCircleHeart, tint: "from-purple-500 to-indigo-500", soft: "bg-purple-50" },
+  { id: "textbooks", label: "Учебники", desc: "PDF-учебники для скачивания и чтения", icon: BookOpen, tint: "from-teal-500 to-emerald-500", soft: "bg-teal-50" },
+  { id: "worksheets", label: "Рабочие листы", desc: "Задания для самостоятельной работы", icon: ClipboardList, tint: "from-sky-500 to-cyan-500", soft: "bg-sky-50" },
 ];
 
 // Демо-данные (в проде — fetchMaterials() из lib/supabaseClient.js)
@@ -71,7 +75,7 @@ function SoftIcon({ icon: Icon, tint }) {
   );
 }
 
-function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail }) {
+function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpenProfile }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -150,6 +154,15 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail }) {
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  onOpenProfile();
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+              >
+                <User className="w-4 h-4" /> Мой профиль
+              </button>
               <button
                 onClick={() => {
                   setProfileOpen(false);
@@ -352,8 +365,10 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
    СТРАНИЦА МАТЕРИАЛОВ
    ============================================================ */
 
-function MaterialsPage({ initialType, isPro, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool }) {
+function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool, onOpenFile }) {
   const [activeType, setActiveType] = useState(initialType || "presentations");
+  const [grade, setGrade] = useState(initialGrade || null);
+  const [quarter, setQuarter] = useState(initialQuarter || null);
   const type = MATERIAL_TYPES.find((m) => m.id === activeType);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -361,13 +376,21 @@ function MaterialsPage({ initialType, isPro, onBack, onOpenPaywall, onOpenCanva,
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchMaterials({ type: activeType })
+    fetchMaterials({ type: activeType, grade, quarter })
       .then((rows) => {
         if (cancelled) return;
+        // Сортируем: сначала по order_index (порядок темы), затем по названию темы
+        const sorted = [...rows].sort((a, b) => {
+          const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0);
+          if (orderDiff !== 0) return orderDiff;
+          return (a.topic || "").localeCompare(b.topic || "", "ru");
+        });
         // Приводим поля из базы (snake_case) к формату, который ждёт интерфейс
-        const mapped = rows.map((r) => ({
+        const mapped = sorted.map((r) => ({
           title: r.title,
           grade: r.grade,
+          quarter: r.quarter,
+          topic: r.topic,
           tag: r.tag,
           locked: !r.is_free,
           canvaUrl: r.canva_url,
@@ -382,14 +405,14 @@ function MaterialsPage({ initialType, isPro, onBack, onOpenPaywall, onOpenCanva,
     return () => {
       cancelled = true;
     };
-  }, [activeType]);
+  }, [activeType, grade, quarter]);
 
   const handleOpen = (item) => {
     if (item.locked && !isPro) return onOpenPaywall();
     if (item.canvaUrl) return onOpenCanva(item);
     if (item.gameId) return onOpenGame(item.gameId);
     if (item.toolId) return onOpenTool(item.toolId);
-    if (item.fileUrl) return window.open(item.fileUrl, "_blank");
+    if (item.fileUrl) return onOpenFile(item);
   };
 
   return (
@@ -414,6 +437,40 @@ function MaterialsPage({ initialType, isPro, onBack, onOpenPaywall, onOpenCanva,
             </button>
           );
         })}
+      </div>
+
+      {/* Активные фильтры по классу/четверти — можно менять или сбросить */}
+      <div className="flex flex-wrap items-center gap-2 px-1">
+        <select
+          value={grade ?? ""}
+          onChange={(e) => setGrade(e.target.value ? Number(e.target.value) : null)}
+          className="text-sm font-semibold bg-white border border-slate-100 rounded-xl px-3 py-2 text-slate-700 outline-none focus:border-indigo-300"
+        >
+          <option value="">Все классы</option>
+          {GRADES.map((g) => (
+            <option key={g} value={g}>{g} класс</option>
+          ))}
+        </select>
+
+        <select
+          value={quarter ?? ""}
+          onChange={(e) => setQuarter(e.target.value ? Number(e.target.value) : null)}
+          className="text-sm font-semibold bg-white border border-slate-100 rounded-xl px-3 py-2 text-slate-700 outline-none focus:border-indigo-300"
+        >
+          <option value="">Все четверти</option>
+          {QUARTERS.map((q) => (
+            <option key={q.id} value={q.id}>{q.label}</option>
+          ))}
+        </select>
+
+        {(grade || quarter) && (
+          <button
+            onClick={() => { setGrade(null); setQuarter(null); }}
+            className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-2"
+          >
+            Сбросить фильтры
+          </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between px-1">
@@ -442,6 +499,9 @@ function MaterialsPage({ initialType, isPro, onBack, onOpenPaywall, onOpenCanva,
               </div>
               <div>
                 <div className="font-bold text-slate-800 text-sm leading-snug">{item.title}</div>
+                {item.topic && (
+                  <div className="text-xs text-indigo-500 font-medium mt-0.5">{item.topic}</div>
+                )}
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 rounded-lg px-2 py-1">{item.grade} класс</span>
                   <span className="text-[11px] font-medium text-slate-400">{item.tag}</span>
@@ -609,11 +669,12 @@ export default function App() {
   const [view, setView] = useState("dashboard"); // dashboard | materials | paywall | game | tool
   const [materialsFilter, setMaterialsFilter] = useState({ grade: null, quarter: null, type: null });
   const [canvaItem, setCanvaItem] = useState(null);
+  const [fileItem, setFileItem] = useState(null);
   const [activeGame, setActiveGame] = useState(null);
   const [activeTool, setActiveTool] = useState(null);
   const [session, setSession] = useState(undefined); // undefined = проверяется, null = не авторизован
 
-  const { isPro } = useSubscription();
+  const { isPro, plan, periodEnd } = useSubscription();
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -657,20 +718,46 @@ export default function App() {
     );
   }
 
+  if (view === "profile") {
+    return (
+      <div className="min-h-screen bg-[#F4F6FA] font-sans">
+        <div className="max-w-6xl mx-auto px-5 py-6">
+          <ProfilePage
+            onBack={() => setView("dashboard")}
+            onOpenPaywall={() => setView("paywall")}
+            isPro={isPro}
+            plan={plan}
+            periodEnd={periodEnd}
+            userEmail={session?.user?.email}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F4F6FA] font-sans relative">
       <div className="max-w-6xl mx-auto px-5 py-6">
-        <Header onLogoClick={() => setView("dashboard")} isPro={isPro} onSignOut={() => supabase.auth.signOut()} userEmail={session?.user?.email} />
+        <Header
+          onLogoClick={() => setView("dashboard")}
+          isPro={isPro}
+          onSignOut={() => supabase.auth.signOut()}
+          userEmail={session?.user?.email}
+          onOpenProfile={() => setView("profile")}
+        />
 
         {view === "dashboard" && <Dashboard onOpenMaterials={openMaterials} onOpenPaywall={() => setView("paywall")} />}
 
         {view === "materials" && (
           <MaterialsPage
             initialType={materialsFilter.type}
+            initialGrade={materialsFilter.grade}
+            initialQuarter={materialsFilter.quarter}
             isPro={isPro}
             onBack={() => setView("dashboard")}
             onOpenPaywall={() => setView("paywall")}
             onOpenCanva={(item) => setCanvaItem(item)}
+            onOpenFile={(item) => setFileItem(item)}
             onOpenGame={(gameId) => {
               setActiveGame(gameId);
               setView("game");
@@ -692,6 +779,13 @@ export default function App() {
         title={canvaItem?.title}
         canvaUrl={canvaItem?.canvaUrl}
         onClose={() => setCanvaItem(null)}
+      />
+
+      <GenericFileViewer
+        open={Boolean(fileItem)}
+        title={fileItem?.title}
+        fileUrl={fileItem?.fileUrl}
+        onClose={() => setFileItem(null)}
       />
     </div>
   );
