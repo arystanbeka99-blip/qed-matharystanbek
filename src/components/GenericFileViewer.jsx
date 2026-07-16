@@ -1,19 +1,54 @@
 import React, { useEffect, useState } from "react";
-import { X, ExternalLink, Loader2 } from "lucide-react";
+import { X, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
 
 /**
  * Показывает произвольный файл (HTML или PDF) во встроенном iframe.
  * Используется для:
- *  - собственных HTML-игр (Мафия-анализатор, лабиринты и т.п.)
+ *  - собственных HTML-игр
  *  - HTML-рефлексий
  *  - рабочих листов (PDF или HTML)
- * Файл должен лежать в публичном бакете Supabase Storage (materials-files).
+ *
+ * Для .html/.htm файлов мы САМИ скачиваем текст и вставляем его через
+ * srcDoc, а не просто указываем src=ссылка. Это защищает от ситуации,
+ * когда Supabase Storage отдаёт файл с неправильным заголовком
+ * Content-Type (из-за чего браузер показывал "сырой" код вместо
+ * отрисованной страницы) — srcDoc всегда рендерится как HTML,
+ * независимо от того, что говорит сервер.
  */
 export default function GenericFileViewer({ open, onClose, title, fileUrl }) {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [htmlContent, setHtmlContent] = useState(null);
+
+  const isHtmlFile = (fileUrl || "").toLowerCase().split("?")[0].match(/\.html?$/);
 
   useEffect(() => {
-    if (open) setLoading(true);
+    if (!open || !fileUrl) return;
+    setLoading(true);
+    setError(null);
+    setHtmlContent(null);
+
+    if (isHtmlFile) {
+      // Добавляем метку времени, чтобы обойти возможное кэширование
+      // сервером/браузером старой версии файла
+      const bustedUrl = fileUrl + (fileUrl.includes("?") ? "&" : "?") + "t=" + Date.now();
+      fetch(bustedUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error("Файл не найден на сервере");
+          return res.text();
+        })
+        .then((text) => {
+          setHtmlContent(text);
+          setLoading(false);
+        })
+        .catch((err) => {
+          setError(err.message);
+          setLoading(false);
+        });
+    } else {
+      // PDF и другие файлы — открываем как обычно, у них таких проблем не бывает
+      setLoading(false);
+    }
   }, [open, fileUrl]);
 
   useEffect(() => {
@@ -61,14 +96,33 @@ export default function GenericFileViewer({ open, onClose, title, fileUrl }) {
               <Loader2 className="w-4 h-4 animate-spin" /> Загрузка...
             </div>
           )}
-          <iframe
-            title={title}
-            src={fileUrl}
-            onLoad={() => setLoading(false)}
-            className="absolute inset-0 w-full h-full border-0"
-            allow="fullscreen"
-            allowFullScreen
-          />
+
+          {error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-rose-500 text-sm font-medium px-6 text-center">
+              <AlertTriangle className="w-6 h-6" />
+              Не удалось загрузить файл: {error}
+            </div>
+          )}
+
+          {!loading && !error && isHtmlFile && htmlContent && (
+            <iframe
+              title={title}
+              srcDoc={htmlContent}
+              className="absolute inset-0 w-full h-full border-0"
+              allow="fullscreen"
+              allowFullScreen
+            />
+          )}
+
+          {!loading && !error && !isHtmlFile && (
+            <iframe
+              title={title}
+              src={fileUrl}
+              className="absolute inset-0 w-full h-full border-0"
+              allow="fullscreen"
+              allowFullScreen
+            />
+          )}
         </div>
       </div>
     </div>
