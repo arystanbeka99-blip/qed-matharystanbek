@@ -102,11 +102,12 @@ export async function getActiveSubscription(userId) {
 /**
  * Список материалов по фильтрам (класс / четверть / тип)
  */
-export async function fetchMaterials({ grade, quarter, type }) {
+export async function fetchMaterials({ grade, quarter, type, language }) {
   let query = supabase.from("materials").select("*");
   if (grade) query = query.eq("grade", grade);
   if (quarter) query = query.eq("quarter", quarter);
   if (type) query = query.eq("type", type);
+  if (language) query = query.eq("language", language);
 
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error) throw error;
