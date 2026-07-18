@@ -6,7 +6,9 @@ import {
   Star, Zap, ShieldCheck, Menu, X, LayoutGrid, BookOpen, ClipboardList, Download,
 } from "lucide-react";
 import { useSubscription } from "./hooks/useSubscription";
+import { useLanguage } from "./hooks/useLanguage";
 import { supabase, fetchMaterials } from "./lib/supabaseClient";
+import LanguageSelect from "./components/LanguageSelect";
 import CanvaViewer from "./components/CanvaViewer";
 import GenericFileViewer from "./components/GenericFileViewer";
 import ProfilePage from "./components/ProfilePage";
@@ -24,19 +26,19 @@ const GRAD_EXAM = "bg-gradient-to-br from-[#FF6B4A] to-[#FFA800]";
 const GRADES = [5, 6, 7, 8, 9, 10, 11];
 
 const QUARTERS = [
-  { id: 1, label: "I четверть", icon: Leaf, tint: "from-amber-400 to-orange-400" },
-  { id: 2, label: "II четверть", icon: Snowflake, tint: "from-sky-400 to-indigo-400" },
-  { id: 3, label: "III четверть", icon: Flower2, tint: "from-pink-400 to-fuchsia-400" },
-  { id: 4, label: "IV четверть", icon: Sun, tint: "from-yellow-400 to-lime-400" },
+  { id: 1, labelKey: "quarter_1", label: "I четверть", icon: Leaf, tint: "from-amber-400 to-orange-400" },
+  { id: 2, labelKey: "quarter_2", label: "II четверть", icon: Snowflake, tint: "from-sky-400 to-indigo-400" },
+  { id: 3, labelKey: "quarter_3", label: "III четверть", icon: Flower2, tint: "from-pink-400 to-fuchsia-400" },
+  { id: 4, labelKey: "quarter_4", label: "IV четверть", icon: Sun, tint: "from-yellow-400 to-lime-400" },
 ];
 
 const MATERIAL_TYPES = [
-  { id: "presentations", label: "Презентации", desc: "Слайды в Canva, готовые к уроку", icon: PlayCircle, tint: "from-indigo-500 to-purple-500", soft: "bg-indigo-50" },
-  { id: "ksp", label: "КСП / КТП", desc: "Поурочные и календарные планы", icon: FileText, tint: "from-violet-500 to-purple-500", soft: "bg-violet-50" },
-  { id: "games", label: "Игры", desc: "Интерактивные тренажёры и квесты", icon: Gamepad2, tint: "from-fuchsia-500 to-pink-500", soft: "bg-fuchsia-50" },
-  { id: "reflection", label: "Рефлексии", desc: "Инструменты обратной связи с классом", icon: MessageCircleHeart, tint: "from-purple-500 to-indigo-500", soft: "bg-purple-50" },
-  { id: "textbooks", label: "Учебники", desc: "PDF-учебники для скачивания и чтения", icon: BookOpen, tint: "from-teal-500 to-emerald-500", soft: "bg-teal-50" },
-  { id: "worksheets", label: "Рабочие листы", desc: "Задания для самостоятельной работы", icon: ClipboardList, tint: "from-sky-500 to-cyan-500", soft: "bg-sky-50" },
+  { id: "presentations", labelKey: "type_presentations", descKey: "type_presentations_desc", icon: PlayCircle, tint: "from-indigo-500 to-purple-500", soft: "bg-indigo-50" },
+  { id: "ksp", labelKey: "type_ksp", descKey: "type_ksp_desc", icon: FileText, tint: "from-violet-500 to-purple-500", soft: "bg-violet-50" },
+  { id: "games", labelKey: "type_games", descKey: "type_games_desc", icon: Gamepad2, tint: "from-fuchsia-500 to-pink-500", soft: "bg-fuchsia-50" },
+  { id: "reflection", labelKey: "type_reflection", descKey: "type_reflection_desc", icon: MessageCircleHeart, tint: "from-purple-500 to-indigo-500", soft: "bg-purple-50" },
+  { id: "textbooks", labelKey: "type_textbooks", descKey: "type_textbooks_desc", icon: BookOpen, tint: "from-teal-500 to-emerald-500", soft: "bg-teal-50" },
+  { id: "worksheets", labelKey: "type_worksheets", descKey: "type_worksheets_desc", icon: ClipboardList, tint: "from-sky-500 to-cyan-500", soft: "bg-sky-50" },
 ];
 
 // Демо-данные (в проде — fetchMaterials() из lib/supabaseClient.js)
@@ -75,7 +77,7 @@ function SoftIcon({ icon: Icon, tint }) {
   );
 }
 
-function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpenProfile }) {
+function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpenProfile, t }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -107,7 +109,7 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpen
         <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
         <input
           type="text"
-          placeholder="Найти материал..."
+          placeholder={t("search_placeholder")}
           className="w-full bg-white rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 outline-none shadow-sm border border-slate-100 focus:border-indigo-300 transition-colors"
         />
       </div>
@@ -146,7 +148,7 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpen
             <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
             <div className="absolute right-0 top-12 z-40 w-60 bg-white rounded-2xl border border-slate-100 shadow-xl p-2">
               <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
-                <div className="text-xs text-slate-400">Вы вошли как</div>
+                <div className="text-xs text-slate-400">{t("signed_in_as")}</div>
                 <div className="text-sm font-semibold text-slate-800 truncate">{userEmail}</div>
                 {isPro && (
                   <div className={`inline-flex items-center gap-1 mt-2 ${GRAD_EXAM} text-white text-[10px] font-bold rounded-lg px-2 py-1`}>
@@ -161,7 +163,7 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpen
                 }}
                 className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
               >
-                <User className="w-4 h-4" /> Мой профиль
+                <User className="w-4 h-4" /> {t("my_profile")}
               </button>
               <button
                 onClick={() => {
@@ -170,7 +172,7 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpen
                 }}
                 className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-50 transition-colors"
               >
-                Выйти из аккаунта
+                {t("sign_out")}
               </button>
             </div>
           </>
@@ -185,7 +187,7 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpen
             <input
               autoFocus
               type="text"
-              placeholder="Найти материал..."
+              placeholder={t("search_placeholder")}
               className="w-full bg-white rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 outline-none shadow-lg border border-slate-100"
             />
           </div>
@@ -196,26 +198,26 @@ function Header({ onLogoClick, onMenuToggle, isPro, onSignOut, userEmail, onOpen
 }
 
 /* Нижняя навигация для мобильных устройств */
-function MobileTabBar({ view, setView }) {
+function MobileTabBar({ view, setView, translate }) {
   const tabs = [
-    { id: "dashboard", label: "Главная", icon: LayoutGrid },
-    { id: "materials", label: "Материалы", icon: FileText },
-    { id: "paywall", label: "PRO", icon: Crown },
+    { id: "dashboard", label: translate("nav_home"), icon: LayoutGrid },
+    { id: "materials", label: translate("nav_materials"), icon: FileText },
+    { id: "paywall", label: translate("nav_pro"), icon: Crown },
   ];
   return (
     <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex items-center justify-around py-2 z-40"
          style={{ boxShadow: "0 -8px 24px -12px rgba(15,23,42,0.12)" }}>
-      {tabs.map((t) => {
-        const active = view === t.id;
-        const Icon = t.icon;
+      {tabs.map((tab) => {
+        const active = view === tab.id;
+        const Icon = tab.icon;
         return (
           <button
-            key={t.id}
-            onClick={() => setView(t.id)}
+            key={tab.id}
+            onClick={() => setView(tab.id)}
             className="flex flex-col items-center gap-1 px-4 py-1"
           >
             <Icon className={`w-5 h-5 ${active ? "text-indigo-600" : "text-slate-400"}`} />
-            <span className={`text-[10px] font-semibold ${active ? "text-indigo-600" : "text-slate-400"}`}>{t.label}</span>
+            <span className={`text-[10px] font-semibold ${active ? "text-indigo-600" : "text-slate-400"}`}>{tab.label}</span>
           </button>
         );
       })}
@@ -227,7 +229,7 @@ function MobileTabBar({ view, setView }) {
    ГЛАВНЫЙ ДАШБОРД
    ============================================================ */
 
-function Dashboard({ onOpenMaterials, onOpenPaywall }) {
+function Dashboard({ onOpenMaterials, onOpenPaywall, t }) {
   const [grade, setGrade] = useState(null);
   const [quarter, setQuarter] = useState(null);
 
@@ -242,16 +244,16 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
           <div className="absolute -right-2 bottom-4 w-24 h-24 rounded-full bg-white/10" />
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 bg-white/15 rounded-2xl px-3 py-1.5 text-white text-xs font-medium mb-3 sm:mb-4">
-              <Sparkles className="w-3.5 h-3.5" /> Добро пожаловать
+              <Sparkles className="w-3.5 h-3.5" /> {t("welcome_badge")}
             </div>
-            <h1 className="text-white text-xl sm:text-2xl font-bold tracking-tight mb-1.5">QED Math Space</h1>
-            <p className="text-white/80 text-sm max-w-sm">Все ваши уроки, планы и игры — в одном премиальном пространстве.</p>
+            <h1 className="text-white text-xl sm:text-2xl font-bold tracking-tight mb-1.5">{t("welcome_title")}</h1>
+            <p className="text-white/80 text-sm max-w-sm">{t("welcome_desc")}</p>
           </div>
           <button
             onClick={() => onOpenMaterials(null, null, null)}
             className="relative z-10 self-start mt-4 bg-white text-indigo-600 font-semibold text-sm px-5 py-2.5 rounded-2xl flex items-center gap-1.5 hover:bg-white/90 transition-colors"
           >
-            Смотреть материалы <ChevronRight className="w-4 h-4" />
+            {t("view_materials")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
@@ -262,22 +264,22 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
           <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10" />
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 bg-white/15 rounded-2xl px-3 py-1.5 text-white text-xs font-medium mb-3 sm:mb-4">
-              <GraduationCap className="w-3.5 h-3.5" /> Аттестация · ЕНТ
+              <GraduationCap className="w-3.5 h-3.5" /> {t("exam_badge")}
             </div>
-            <h2 className="text-white text-xl sm:text-2xl font-bold tracking-tight mb-1.5">Подготовка к экзаменам</h2>
-            <p className="text-white/85 text-sm max-w-sm">Варианты, разборы заданий и тренажёры для выпускных классов.</p>
+            <h2 className="text-white text-xl sm:text-2xl font-bold tracking-tight mb-1.5">{t("exam_title")}</h2>
+            <p className="text-white/85 text-sm max-w-sm">{t("exam_desc")}</p>
           </div>
           <button
             onClick={() => onOpenMaterials(9, null, null)}
             className="relative z-10 self-start mt-4 bg-white text-[#FF6B4A] font-semibold text-sm px-5 py-2.5 rounded-2xl flex items-center gap-1.5 hover:bg-white/90 transition-colors"
           >
-            Открыть раздел <ChevronRight className="w-4 h-4" />
+            {t("open_section")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       <section>
-        <h3 className="text-slate-800 font-bold text-sm mb-3 px-1">По классу</h3>
+        <h3 className="text-slate-800 font-bold text-sm mb-3 px-1">{t("by_grade")}</h3>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 sm:gap-3">
           {GRADES.map((g) => {
             const active = grade === g;
@@ -291,7 +293,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
                 style={active ? { boxShadow: "0 10px 24px -8px rgba(79,70,229,0.5)" } : {}}
               >
                 <span className="text-base sm:text-lg font-bold">{g}</span>
-                <span className={`text-[10px] font-medium ${active ? "text-white/80" : "text-slate-400"}`}>класс</span>
+                <span className={`text-[10px] font-medium ${active ? "text-white/80" : "text-slate-400"}`}>{t("grade_label")}</span>
               </button>
             );
           })}
@@ -299,7 +301,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
       </section>
 
       <section>
-        <h3 className="text-slate-800 font-bold text-sm mb-3 px-1">По четверти</h3>
+        <h3 className="text-slate-800 font-bold text-sm mb-3 px-1">{t("by_quarter")}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
           {QUARTERS.map((q) => {
             const active = quarter === q.id;
@@ -315,7 +317,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
                 <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center bg-gradient-to-br ${q.tint}`}>
                   <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
                 </div>
-                <span className="text-xs sm:text-sm font-semibold">{q.label}</span>
+                <span className="text-xs sm:text-sm font-semibold">{t(q.labelKey)}</span>
               </button>
             );
           })}
@@ -323,7 +325,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
       </section>
 
       <section>
-        <h3 className="text-slate-800 font-bold text-sm mb-3 px-1">Тип материала</h3>
+        <h3 className="text-slate-800 font-bold text-sm mb-3 px-1">{t("material_type")}</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {MATERIAL_TYPES.map((m) => (
             <button
@@ -332,10 +334,10 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
               className={`text-left rounded-3xl p-4 sm:p-5 ${m.soft} border border-white hover:shadow-md transition-shadow group`}
             >
               <SoftIcon icon={m.icon} tint={m.tint} />
-              <div className="mt-3 sm:mt-4 font-bold text-slate-800 text-sm">{m.label}</div>
-              <div className="text-xs text-slate-500 mt-1 leading-relaxed">{m.desc}</div>
+              <div className="mt-3 sm:mt-4 font-bold text-slate-800 text-sm">{t(m.labelKey)}</div>
+              <div className="text-xs text-slate-500 mt-1 leading-relaxed">{t(m.descKey)}</div>
               <div className="mt-3 flex items-center gap-1 text-indigo-600 text-xs font-semibold sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                Открыть <ChevronRight className="w-3.5 h-3.5" />
+                {t("open_short")} <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </button>
           ))}
@@ -351,8 +353,8 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
             <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div>
-            <div className="font-bold text-slate-800 text-sm">Откройте полный доступ QED PRO</div>
-            <div className="text-xs text-slate-400 hidden sm:block">Все презентации, планы, игры и рефлексии без ограничений</div>
+            <div className="font-bold text-slate-800 text-sm">{t("open_pro_banner")}</div>
+            <div className="text-xs text-slate-400 hidden sm:block">{t("open_pro_banner_desc")}</div>
           </div>
         </div>
         <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
@@ -365,7 +367,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall }) {
    СТРАНИЦА МАТЕРИАЛОВ
    ============================================================ */
 
-function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subscribedGrades, examPrepBonus, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool, onOpenFile }) {
+function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subscribedGrades, examPrepBonus, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool, onOpenFile, t }) {
   const [activeType, setActiveType] = useState(initialType || "presentations");
   const [grade, setGrade] = useState(initialGrade || null);
   const [quarter, setQuarter] = useState(initialQuarter || null);
@@ -453,7 +455,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
   return (
     <div className="space-y-5 sm:space-y-6 pb-20 sm:pb-0">
       <button onClick={onBack} className="flex items-center gap-1.5 text-slate-500 text-sm font-medium hover:text-slate-800 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Назад на главную
+        <ArrowLeft className="w-4 h-4" /> {t("back_to_dashboard")}
       </button>
 
       <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 -mx-1 px-1">
@@ -468,7 +470,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                 active ? `${GRAD_MAIN} text-white shadow-md` : "bg-white text-slate-600 border border-slate-100 hover:border-indigo-200"
               }`}
             >
-              <Icon className="w-4 h-4" /> {m.label}
+              <Icon className="w-4 h-4" /> {t(m.labelKey)}
             </button>
           );
         })}
@@ -481,9 +483,9 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
           onChange={(e) => setGrade(e.target.value ? Number(e.target.value) : null)}
           className="text-sm font-semibold bg-white border border-slate-100 rounded-xl px-3 py-2 text-slate-700 outline-none focus:border-indigo-300"
         >
-          <option value="">Все классы</option>
+          <option value="">{t("all_grades")}</option>
           {GRADES.map((g) => (
-            <option key={g} value={g}>{g} класс</option>
+            <option key={g} value={g}>{g} {t("grade_label")}</option>
           ))}
         </select>
 
@@ -492,9 +494,9 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
           onChange={(e) => setQuarter(e.target.value ? Number(e.target.value) : null)}
           className="text-sm font-semibold bg-white border border-slate-100 rounded-xl px-3 py-2 text-slate-700 outline-none focus:border-indigo-300"
         >
-          <option value="">Все четверти</option>
+          <option value="">{t("all_quarters")}</option>
           {QUARTERS.map((q) => (
-            <option key={q.id} value={q.id}>{q.label}</option>
+            <option key={q.id} value={q.id}>{t(q.labelKey)}</option>
           ))}
         </select>
 
@@ -503,19 +505,19 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
             onClick={() => { setGrade(null); setQuarter(null); }}
             className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-2"
           >
-            Сбросить фильтры
+            {t("reset_filters")}
           </button>
         )}
       </div>
 
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-slate-900 font-bold text-lg tracking-tight">{type?.label}</h2>
-        <span className="text-xs text-slate-400 font-medium">{loading ? "загрузка..." : `${items.length} материала`}</span>
+        <h2 className="text-slate-900 font-bold text-lg tracking-tight">{type ? t(type.labelKey) : ""}</h2>
+        <span className="text-xs text-slate-400 font-medium">{loading ? t("loading") : `${items.length} ${t("materials_count")}`}</span>
       </div>
 
       {!loading && items.length === 0 && (
         <div className="rounded-3xl bg-white border border-slate-100 p-10 text-center">
-          <div className="text-slate-400 text-sm">Материалов пока нет — добавьте их в таблицу materials в Supabase.</div>
+          <div className="text-slate-400 text-sm">{t("no_materials")}</div>
         </div>
       )}
 
@@ -532,7 +534,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                   </div>
                 )}
                 {!locked && item.isPreview && (
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1">Бесплатно</span>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1">{t("free_badge")}</span>
                 )}
               </div>
               <div>
@@ -541,7 +543,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                   <div className="text-xs text-indigo-500 font-medium mt-0.5">{item.topic}</div>
                 )}
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 rounded-lg px-2 py-1">{item.grade} класс</span>
+                  <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 rounded-lg px-2 py-1">{item.grade} {t("grade_label")}</span>
                   <span className="text-[11px] font-medium text-slate-400">{item.tag}</span>
                 </div>
               </div>
@@ -551,7 +553,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                   onClick={onOpenPaywall}
                   className="mt-1 w-full rounded-2xl bg-slate-50 text-slate-500 text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5 hover:bg-slate-100 transition-colors"
                 >
-                  <Lock className="w-3.5 h-3.5" /> Открыть по подписке
+                  <Lock className="w-3.5 h-3.5" /> {t("open_by_subscription")}
                 </button>
               ) : activeType === "worksheets" || activeType === "ksp" ? (
                 <div className="mt-1 flex gap-2">
@@ -559,13 +561,13 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                     onClick={() => handleOpen(item)}
                     className={`flex-1 rounded-2xl ${GRAD_MAIN} text-white text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5 hover:opacity-95 transition-opacity`}
                   >
-                    <PlayCircle className="w-3.5 h-3.5" /> Открыть
+                    <PlayCircle className="w-3.5 h-3.5" /> {t("open_short")}
                   </button>
                   <button
                     onClick={() => downloadAsDocument(item)}
                     className="flex-1 rounded-2xl bg-slate-100 text-slate-700 text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5 hover:bg-slate-200 transition-colors"
                   >
-                    <Download className="w-3.5 h-3.5" /> Скачать
+                    <Download className="w-3.5 h-3.5" /> {t("download_short")}
                   </button>
                 </div>
               ) : (
@@ -573,7 +575,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                   onClick={() => handleOpen(item)}
                   className={`mt-1 w-full rounded-2xl ${GRAD_MAIN} text-white text-sm font-semibold py-2.5 flex items-center justify-center gap-1.5 hover:opacity-95 transition-opacity`}
                 >
-                  <PlayCircle className="w-3.5 h-3.5" /> Открыть материал
+                  <PlayCircle className="w-3.5 h-3.5" /> {t("open_material")}
                 </button>
               )}
             </div>
@@ -589,9 +591,8 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
    ============================================================ */
 
 const PRICING_TIERS = [
-  { id: "month", label: "Месяц", price: "10 000 ₸", priceValue: 10000, perMonth: "10 000 ₸ / мес", months: 1, badge: null },
-  { id: "half_year", label: "6 месяцев", price: "45 000 ₸", priceValue: 45000, perMonth: "7 500 ₸ / мес", months: 6, badge: "Выгода 25%" },
-  { id: "year", label: "12 месяцев", price: "100 000 ₸", priceValue: 100000, perMonth: "8 333 ₸ / мес", months: 12, badge: "Популярный" },
+  { id: "half_year", labelKey: "tariff_half_year", price: "45 000 ₸", priceValue: 45000, perMonth: "7 500 ₸ / мес", months: 6, badgeKey: "tariff_badge_discount" },
+  { id: "year", labelKey: "tariff_year", price: "100 000 ₸", priceValue: 100000, perMonth: "8 333 ₸ / мес", months: 12, badgeKey: "tariff_badge_popular" },
 ];
 
 /**
@@ -621,7 +622,7 @@ function loadCloudPaymentsWidget() {
 // в git-истории (компонент Paywall, функция handleCheckout).
 const ADMIN_WHATSAPP = "77767844108";
 
-function Paywall({ onBack }) {
+function Paywall({ onBack, t }) {
   const [plan, setPlan] = useState("half_year");
   const [selectedGrades, setSelectedGrades] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -631,13 +632,13 @@ function Paywall({ onBack }) {
     setSelectedGrades((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
   };
 
-  const features = [
-    "Презентации выбранных классов",
-    "КСП/КТП по всем четвертям",
-    "Интерактивные игры и тренажёры",
-    "Инструменты рефлексии для класса",
-    "Бонус: подготовка к ЕНТ (9 класс)",
-    "Новые материалы каждую неделю",
+  const featureKeys = [
+    "pro_feature_presentations",
+    "pro_feature_ksp",
+    "pro_feature_games",
+    "pro_feature_reflection",
+    "pro_feature_ent",
+    "pro_feature_weekly",
   ];
 
   /**
@@ -650,7 +651,7 @@ function Paywall({ onBack }) {
   const handleCheckout = async () => {
     setError(null);
     if (selectedGrades.length === 0) {
-      setError("Выберите хотя бы один класс, к которому нужен доступ.");
+      setError(t("pro_error_choose_grade"));
       return;
     }
     setLoading(true);
@@ -658,7 +659,7 @@ function Paywall({ onBack }) {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) {
-        setError("Сначала войдите в аккаунт, чтобы оформить подписку.");
+        setError(t("pro_error_login"));
         setLoading(false);
         return;
       }
@@ -666,7 +667,7 @@ function Paywall({ onBack }) {
       const tier = PRICING_TIERS.find((p) => p.id === plan);
       const message =
         `Здравствуйте! Хочу оформить подписку QED PRO.\n` +
-        `Тариф: ${tier.label} (${tier.price})\n` +
+        `Тариф: ${t(tier.labelKey)} (${tier.price})\n` +
         `Классы: ${selectedGrades.sort((a, b) => a - b).join(", ")}\n` +
         `Моя почта на сайте: ${user.email}`;
 
@@ -682,19 +683,19 @@ function Paywall({ onBack }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-20 sm:pb-0">
       <button onClick={onBack} className="flex items-center gap-1.5 text-slate-500 text-sm font-medium hover:text-slate-800 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Назад
+        <ArrowLeft className="w-4 h-4" /> {t("back")}
       </button>
 
       <div className="text-center space-y-2 pt-2">
         <div className={`inline-flex items-center gap-1.5 ${GRAD_EXAM} text-white text-xs font-semibold rounded-2xl px-3 py-1.5`}>
-          <Crown className="w-3.5 h-3.5" /> QED PRO
+          <Crown className="w-3.5 h-3.5" /> {t("pro_badge")}
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Выберите классы и период</h1>
-        <p className="text-slate-500 text-sm max-w-md mx-auto">Платите только за нужные классы. 9 класс — с бонусом подготовки к ЕНТ.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{t("pro_title")}</h1>
+        <p className="text-slate-500 text-sm max-w-md mx-auto">{t("pro_subtitle")}</p>
       </div>
 
       {/* Тарифы по длительности */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
         {PRICING_TIERS.map((p) => {
           const active = plan === p.id;
           return (
@@ -706,12 +707,12 @@ function Paywall({ onBack }) {
               }`}
               style={active ? { boxShadow: "0 14px 30px -12px rgba(79,70,229,0.5)" } : {}}
             >
-              {p.badge && (
+              {p.badgeKey && (
                 <span className="absolute -top-2.5 left-2 right-2 sm:left-3 sm:right-auto bg-[#FFA800] text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-lg text-center sm:text-left">
-                  {p.badge}
+                  {t(p.badgeKey)}
                 </span>
               )}
-              <div className={`text-[11px] sm:text-xs font-semibold ${active ? "text-white/80" : "text-slate-400"} mt-1.5 sm:mt-0`}>{p.label}</div>
+              <div className={`text-[11px] sm:text-xs font-semibold ${active ? "text-white/80" : "text-slate-400"} mt-1.5 sm:mt-0`}>{t(p.labelKey)}</div>
               <div className="text-sm sm:text-lg font-bold mt-1">{p.price}</div>
               <div className={`text-[10px] sm:text-xs font-medium ${active ? "text-white/70" : "text-slate-400"}`}>{p.perMonth}</div>
             </button>
@@ -721,8 +722,8 @@ function Paywall({ onBack }) {
 
       {/* Выбор классов */}
       <div className="rounded-3xl bg-white border border-slate-100 p-5">
-        <h3 className="font-bold text-slate-800 text-sm mb-1">Какие классы нужны?</h3>
-        <p className="text-xs text-slate-400 mb-3.5">Можно выбрать несколько — цена тарифа не меняется от количества</p>
+        <h3 className="font-bold text-slate-800 text-sm mb-1">{t("pro_which_grades")}</h3>
+        <p className="text-xs text-slate-400 mb-3.5">{t("pro_which_grades_desc")}</p>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
           {GRADES.map((g) => {
             const active = selectedGrades.includes(g);
@@ -744,12 +745,12 @@ function Paywall({ onBack }) {
 
       <div className="rounded-3xl bg-white border border-slate-100 p-5 sm:p-7" style={{ boxShadow: "0 20px 45px -25px rgba(79,70,229,0.35)" }}>
         <div className="grid sm:grid-cols-2 gap-3.5 mb-6 sm:mb-7">
-          {features.map((f, i) => (
-            <div key={i} className="flex items-center gap-2.5">
+          {featureKeys.map((key) => (
+            <div key={key} className="flex items-center gap-2.5">
               <div className="w-5 h-5 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
                 <Check className="w-3 h-3 text-indigo-600" strokeWidth={3} />
               </div>
-              <span className="text-sm text-slate-600">{f}</span>
+              <span className="text-sm text-slate-600">{t(key)}</span>
             </div>
           ))}
         </div>
@@ -759,13 +760,13 @@ function Paywall({ onBack }) {
           className={`w-full ${GRAD_MAIN} text-white font-bold text-sm py-4 rounded-2xl flex items-center justify-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-60`}
           style={{ boxShadow: "0 14px 30px -10px rgba(79,70,229,0.55)" }}
         >
-          <MessageCircleHeart className="w-4 h-4" /> {loading ? "Открываем WhatsApp..." : "Написать для оплаты в WhatsApp"}
+          <MessageCircleHeart className="w-4 h-4" /> {loading ? t("pro_whatsapp_loading") : t("pro_whatsapp_button")}
         </button>
         {error && (
           <div className="mt-3 text-center text-xs font-medium text-rose-500">{error}</div>
         )}
         <div className="flex items-center justify-center gap-1.5 mt-4 text-slate-400 text-xs">
-          <ShieldCheck className="w-3.5 h-3.5" /> Оплата на Kaspi · Доступ откроется после подтверждения
+          <ShieldCheck className="w-3.5 h-3.5" /> {t("pro_kaspi_note")}
         </div>
       </div>
 
@@ -774,7 +775,7 @@ function Paywall({ onBack }) {
           {[1, 2, 3].map((i) => <div key={i} className={`w-7 h-7 rounded-full ${GRAD_MAIN} border-2 border-white`} />)}
         </div>
         <span className="flex items-center gap-1">
-          <Star className="w-3.5 h-3.5 text-[#FFA800] fill-[#FFA800]" /> 4.9 — используют более 1 200 учителей
+          <Star className="w-3.5 h-3.5 text-[#FFA800] fill-[#FFA800]" /> 4.9 — {t("pro_rating")}
         </span>
       </div>
     </div>
@@ -795,6 +796,7 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = проверяется, null = не авторизован
 
   const { isPro, plan, periodEnd, grades: subscribedGrades, examPrepBonus } = useSubscription();
+  const { language, languageChosen, setLanguage, t } = useLanguage();
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -812,9 +814,14 @@ export default function App() {
     return <div className="min-h-screen bg-[#F4F6FA]" />;
   }
 
+  // Сначала — выбор языка (только один раз, дальше запоминается)
+  if (!languageChosen) {
+    return <LanguageSelect onSelect={setLanguage} />;
+  }
+
   // Не авторизован — показываем экран входа/регистрации вместо всего приложения
   if (session === null) {
-    return <Auth onSuccess={() => {}} />;
+    return <Auth onSuccess={() => {}} t={t} language={language} setLanguage={setLanguage} />;
   }
 
   if (view === "game") {
@@ -849,6 +856,9 @@ export default function App() {
             plan={plan}
             periodEnd={periodEnd}
             userEmail={session?.user?.email}
+            t={t}
+            language={language}
+            setLanguage={setLanguage}
           />
         </div>
       </div>
@@ -864,9 +874,10 @@ export default function App() {
           onSignOut={() => supabase.auth.signOut()}
           userEmail={session?.user?.email}
           onOpenProfile={() => setView("profile")}
+          t={t}
         />
 
-        {view === "dashboard" && <Dashboard onOpenMaterials={openMaterials} onOpenPaywall={() => setView("paywall")} />}
+        {view === "dashboard" && <Dashboard onOpenMaterials={openMaterials} onOpenPaywall={() => setView("paywall")} t={t} />}
 
         {view === "materials" && (
           <MaterialsPage
@@ -888,13 +899,14 @@ export default function App() {
               setActiveTool(toolId);
               setView("tool");
             }}
+            t={t}
           />
         )}
 
-        {view === "paywall" && <Paywall onBack={() => setView("dashboard")} />}
+        {view === "paywall" && <Paywall onBack={() => setView("dashboard")} t={t} />}
       </div>
 
-      <MobileTabBar view={view === "game" ? "materials" : view} setView={setView} />
+      <MobileTabBar view={view === "game" ? "materials" : view} setView={setView} translate={t} />
 
       <CanvaViewer
         open={Boolean(canvaItem)}
