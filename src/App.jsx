@@ -367,7 +367,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall, t }) {
    СТРАНИЦА МАТЕРИАЛОВ
    ============================================================ */
 
-function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subscribedGrades, examPrepBonus, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool, onOpenFile, t }) {
+function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subscribedGrades, examPrepBonus, onBack, onOpenPaywall, onOpenCanva, onOpenGame, onOpenTool, onOpenFile, t, language }) {
   const [activeType, setActiveType] = useState(initialType || "presentations");
   const [grade, setGrade] = useState(initialGrade || null);
   const [quarter, setQuarter] = useState(initialQuarter || null);
@@ -378,7 +378,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchMaterials({ type: activeType, grade, quarter })
+    fetchMaterials({ type: activeType, grade, quarter, language })
       .then((rows) => {
         if (cancelled) return;
         // Сортируем: сначала по order_index (порядок темы), затем по названию темы
@@ -417,7 +417,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
     return () => {
       cancelled = true;
     };
-  }, [activeType, grade, quarter, isPro, subscribedGrades, examPrepBonus]);
+  }, [activeType, grade, quarter, isPro, subscribedGrades, examPrepBonus, language]);
 
   // Для рабочих листов и КСП/КТП файл нужно СКАЧАТЬ как документ,
   // а не открывать в окне просмотра — учитель обычно распечатывает
@@ -900,6 +900,7 @@ export default function App() {
               setView("tool");
             }}
             t={t}
+            language={language}
           />
         )}
 
