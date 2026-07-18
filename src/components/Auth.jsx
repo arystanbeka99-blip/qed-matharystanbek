@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Mail, Lock, User, Loader2, GraduationCap, Sparkles } from "lucide-react";
 import { signIn, signUp } from "../lib/supabaseClient";
+import { LANGUAGES } from "../lib/i18n";
 
-export default function Auth({ onSuccess }) {
+export default function Auth({ onSuccess, t, language, setLanguage }) {
   const [mode, setMode] = useState("signin"); // signin | signup
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,13 +20,13 @@ export default function Auth({ onSuccess }) {
     try {
       if (mode === "signup") {
         await signUp(email, password, fullName);
-        setNotice("Проверьте почту — мы отправили ссылку для подтверждения аккаунта.");
+        setNotice(t("auth_notice_check_email"));
       } else {
         await signIn(email, password);
         onSuccess?.();
       }
     } catch (err) {
-      setError(translateAuthError(err.message));
+      setError(translateAuthError(err.message, t));
     } finally {
       setLoading(false);
     }
@@ -45,6 +46,21 @@ export default function Auth({ onSuccess }) {
         }}
       />
 
+      {/* Маленький переключатель языка — можно передумать прямо здесь */}
+      <div className="absolute top-5 right-5 flex bg-white/10 backdrop-blur-md rounded-xl p-1 border border-white/15 z-10">
+        {LANGUAGES.map((lang) => (
+          <button
+            key={lang.code}
+            onClick={() => setLanguage(lang.code)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              language === lang.code ? "bg-white text-indigo-600" : "text-white/70"
+            }`}
+          >
+            {lang.code.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
       <div className="relative w-full max-w-sm">
         <div className="text-center mb-7">
           <div
@@ -53,9 +69,9 @@ export default function Auth({ onSuccess }) {
           >
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">QED Math Space</h1>
+          <h1 className="text-white text-2xl font-bold tracking-tight">{t("app_name")}</h1>
           <p className="text-white/70 text-sm mt-1 flex items-center justify-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> Пространство для учителей математики
+            <Sparkles className="w-3.5 h-3.5" /> {t("app_tagline")}
           </p>
         </div>
 
@@ -65,8 +81,8 @@ export default function Auth({ onSuccess }) {
         >
           <div className="flex bg-white/10 rounded-2xl p-1 border border-white/10 mb-6">
             {[
-              { id: "signin", label: "Вход" },
-              { id: "signup", label: "Регистрация" },
+              { id: "signin", label: t("auth_signin") },
+              { id: "signup", label: t("auth_signup") },
             ].map((m) => (
               <button
                 key={m.id}
@@ -91,7 +107,7 @@ export default function Auth({ onSuccess }) {
                 <input
                   type="text"
                   required
-                  placeholder="Имя и фамилия"
+                  placeholder={t("auth_fullname")}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full bg-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-white/50 outline-none border border-white/15 focus:border-white/40 focus:bg-white/15 transition-colors"
@@ -104,7 +120,7 @@ export default function Auth({ onSuccess }) {
               <input
                 type="email"
                 required
-                placeholder="Электронная почта"
+                placeholder={t("auth_email")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-white/50 outline-none border border-white/15 focus:border-white/40 focus:bg-white/15 transition-colors"
@@ -117,7 +133,7 @@ export default function Auth({ onSuccess }) {
                 type="password"
                 required
                 minLength={6}
-                placeholder="Пароль"
+                placeholder={t("auth_password")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-white/50 outline-none border border-white/15 focus:border-white/40 focus:bg-white/15 transition-colors"
@@ -142,25 +158,22 @@ export default function Auth({ onSuccess }) {
               style={{ boxShadow: "0 14px 30px -12px rgba(0,0,0,0.4)" }}
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {mode === "signup" ? "Создать аккаунт" : "Войти"}
+              {mode === "signup" ? t("auth_signup_button") : t("auth_signin_button")}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-[11px] text-white/50 mt-6 leading-relaxed px-4">
-          Продолжая, вы соглашаетесь с условиями использования QED Math Space
-          и политикой обработки персональных данных.
-        </p>
+        <p className="text-center text-[11px] text-white/50 mt-6 leading-relaxed px-4">{t("auth_terms")}</p>
       </div>
     </div>
   );
 }
 
-function translateAuthError(message) {
+function translateAuthError(message, t) {
   const map = {
-    "Invalid login credentials": "Неверная почта или пароль.",
-    "User already registered": "Пользователь с такой почтой уже зарегистрирован.",
-    "Email not confirmed": "Подтвердите почту — мы отправили ссылку при регистрации.",
+    "Invalid login credentials": t("auth_error_invalid"),
+    "User already registered": t("auth_error_exists"),
+    "Email not confirmed": t("auth_error_not_confirmed"),
   };
   return map[message] || message;
 }
