@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Mail, Calendar, Crown, School, User, Edit3,
-  FileText, Gamepad2, PlayCircle, ShieldCheck, LogOut, Check,
+  FileText, Gamepad2, PlayCircle, ShieldCheck, LogOut, Check, Globe,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { LANGUAGES } from "../lib/i18n";
 
 const GRAD_MAIN = "bg-gradient-to-br from-[#4F46E5] to-[#A855F7]";
 const GRAD_EXAM = "bg-gradient-to-br from-[#FF6B4A] to-[#FFA800]";
 
 /**
- * Личная комната учителя: профиль, статус подписки, быстрая статистика
- * активности. Данные профиля читаются из таблицы profiles (создаётся
- * автоматически триггером при регистрации — см. supabase-schema.sql).
+ * Личная комната учителя: профиль, статус подписки, язык интерфейса,
+ * быстрая статистика активности. Данные профиля читаются из таблицы
+ * profiles (создаётся автоматически триггером при регистрации).
  */
-export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, periodEnd, userEmail }) {
+export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, periodEnd, userEmail, t, language, setLanguage }) {
   const [profile, setProfile] = useState(null);
   const [editingName, setEditingName] = useState(false);
   const [editingSchool, setEditingSchool] = useState(false);
@@ -59,13 +60,15 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
     .toUpperCase();
 
   const joinedDate = profile?.created_at
-    ? new Date(profile.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+    ? new Date(profile.created_at).toLocaleDateString(language === "kk" ? "kk-KZ" : "ru-RU", { day: "numeric", month: "long", year: "numeric" })
     : "—";
+
+  const tariffLabel = plan === "year" ? t("tariff_year") : plan === "half_year" ? t("tariff_half_year") : t("tariff_month");
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 sm:space-y-6 pb-20 sm:pb-0">
       <button onClick={onBack} className="flex items-center gap-1.5 text-slate-500 text-sm font-medium hover:text-slate-800 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Назад
+        <ArrowLeft className="w-4 h-4" /> {t("back")}
       </button>
 
       {/* Карточка профиля */}
@@ -89,7 +92,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
                   onChange={(e) => setNameInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && saveField("full_name", nameInput, setEditingName)}
                   className="bg-white/20 border border-white/30 rounded-xl px-3 py-1.5 text-white placeholder-white/60 text-lg font-bold outline-none w-full max-w-[220px]"
-                  placeholder="Имя и фамилия"
+                  placeholder={t("auth_fullname")}
                 />
                 <button
                   onClick={() => saveField("full_name", nameInput, setEditingName)}
@@ -104,7 +107,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
                 onClick={() => setEditingName(true)}
                 className="flex items-center gap-2 text-white text-lg sm:text-xl font-bold tracking-tight truncate"
               >
-                {profile?.full_name || "Учитель математики"}
+                {profile?.full_name || t("app_tagline")}
                 <Edit3 className="w-3.5 h-3.5 text-white/60 shrink-0" />
               </button>
             )}
@@ -113,10 +116,33 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
             </div>
             {isPro && (
               <div className={`inline-flex items-center gap-1 mt-2.5 ${GRAD_EXAM} text-white text-[11px] font-bold rounded-lg px-2.5 py-1`}>
-                <Crown className="w-3 h-3" /> QED PRO
+                <Crown className="w-3 h-3" /> {t("pro_badge")}
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Язык интерфейса */}
+      <div className="rounded-2xl bg-white border border-slate-100 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+            <Globe className="w-4.5 h-4.5 text-sky-500" />
+          </div>
+          <div className="text-sm font-bold text-slate-800">{t("profile_language")}</div>
+        </div>
+        <div className="flex bg-slate-100 rounded-xl p-1">
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => setLanguage(lang.code)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                language === lang.code ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              {lang.code.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -127,7 +153,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
             <Calendar className="w-4.5 h-4.5 text-indigo-500" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] text-slate-400 font-medium">В команде с</div>
+            <div className="text-[11px] text-slate-400 font-medium">{t("profile_joined")}</div>
             <div className="text-sm font-bold text-slate-800 truncate">{joinedDate}</div>
           </div>
         </div>
@@ -136,7 +162,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
             <School className="w-4.5 h-4.5 text-purple-500" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] text-slate-400 font-medium">Школа</div>
+            <div className="text-[11px] text-slate-400 font-medium">{t("profile_school")}</div>
             {editingSchool ? (
               <div className="flex items-center gap-1.5 mt-0.5">
                 <input
@@ -144,7 +170,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
                   value={schoolInput}
                   onChange={(e) => setSchoolInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && saveField("school", schoolInput, setEditingSchool)}
-                  placeholder="Название школы"
+                  placeholder={t("profile_school_placeholder")}
                   className="text-sm font-bold text-slate-800 outline-none border-b border-purple-300 w-full min-w-0"
                 />
                 <button
@@ -160,7 +186,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
                 onClick={() => setEditingSchool(true)}
                 className="flex items-center gap-1.5 text-sm font-bold text-slate-800 truncate"
               >
-                {profile?.school || "Не указана"}
+                {profile?.school || t("profile_school_not_set")}
                 <Edit3 className="w-3 h-3 text-slate-300 shrink-0" />
               </button>
             )}
@@ -171,11 +197,11 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
       {/* Подписка */}
       <div className="rounded-3xl bg-white border border-slate-100 p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-slate-800 text-sm">Подписка</h3>
+          <h3 className="font-bold text-slate-800 text-sm">{t("profile_subscription")}</h3>
           {isPro ? (
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1">Активна</span>
+            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1">{t("profile_active")}</span>
           ) : (
-            <span className="text-[11px] font-bold text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1">Не оформлена</span>
+            <span className="text-[11px] font-bold text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1">{t("profile_not_active")}</span>
           )}
         </div>
 
@@ -186,11 +212,11 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
             </div>
             <div>
               <div className="font-bold text-slate-800 text-sm">
-                Тариф «{plan === "year" ? "Год" : "Месяц"}»
+                {t("profile_tariff")} «{tariffLabel}»
               </div>
               {periodEnd && (
                 <div className="text-xs text-slate-400 mt-0.5">
-                  Действует до {new Date(periodEnd).toLocaleDateString("ru-RU")}
+                  {t("profile_valid_until")} {new Date(periodEnd).toLocaleDateString(language === "kk" ? "kk-KZ" : "ru-RU")}
                 </div>
               )}
             </div>
@@ -200,7 +226,7 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
             onClick={onOpenPaywall}
             className={`w-full rounded-2xl ${GRAD_MAIN} text-white font-semibold text-sm py-3.5 flex items-center justify-center gap-2`}
           >
-            <Crown className="w-4 h-4" /> Оформить QED PRO
+            <Crown className="w-4 h-4" /> {t("pro_badge")}
           </button>
         )}
       </div>
@@ -208,31 +234,31 @@ export default function ProfilePage({ onBack, onOpenPaywall, isPro, plan, period
       {/* Быстрые ссылки на разделы контента */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Презентации", icon: PlayCircle, tint: "from-indigo-500 to-purple-500" },
-          { label: "Игры", icon: Gamepad2, tint: "from-fuchsia-500 to-pink-500" },
-          { label: "КСП/КТП", icon: FileText, tint: "from-violet-500 to-purple-500" },
+          { labelKey: "type_presentations", icon: PlayCircle, tint: "from-indigo-500 to-purple-500" },
+          { labelKey: "type_games", icon: Gamepad2, tint: "from-fuchsia-500 to-pink-500" },
+          { labelKey: "type_ksp", icon: FileText, tint: "from-violet-500 to-purple-500" },
         ].map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.label} className="rounded-2xl bg-white border border-slate-100 p-4 text-center">
+            <div key={item.labelKey} className="rounded-2xl bg-white border border-slate-100 p-4 text-center">
               <div className={`w-10 h-10 mx-auto rounded-xl bg-gradient-to-br ${item.tint} flex items-center justify-center mb-2`}>
                 <Icon className="w-4.5 h-4.5 text-white" />
               </div>
-              <div className="text-xs font-semibold text-slate-600">{item.label}</div>
+              <div className="text-xs font-semibold text-slate-600">{t(item.labelKey)}</div>
             </div>
           );
         })}
       </div>
 
       <div className="flex items-center justify-center gap-1.5 text-slate-300 text-[11px]">
-        <ShieldCheck className="w-3.5 h-3.5" /> Ваши данные защищены и не передаются третьим лицам
+        <ShieldCheck className="w-3.5 h-3.5" /> {t("profile_privacy_note")}
       </div>
 
       <button
         onClick={() => supabase.auth.signOut()}
         className="w-full flex items-center justify-center gap-2 rounded-2xl border border-rose-100 text-rose-500 font-semibold text-sm py-3.5 hover:bg-rose-50 transition-colors"
       >
-        <LogOut className="w-4 h-4" /> Выйти из аккаунта
+        <LogOut className="w-4 h-4" /> {t("sign_out")}
       </button>
     </div>
   );
