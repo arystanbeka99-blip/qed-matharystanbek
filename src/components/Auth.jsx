@@ -3,7 +3,7 @@ import { Mail, Lock, User, Loader2, GraduationCap, Sparkles } from "lucide-react
 import { signIn, signUp } from "../lib/supabaseClient";
 import { LANGUAGES } from "../lib/i18n";
 
-export default function Auth({ onSuccess, t, language, setLanguage }) {
+export default function Auth({ onSuccess, t, language, setLanguage, deviceLimitWarning }) {
   const [mode, setMode] = useState("signin"); // signin | signup
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -74,6 +74,12 @@ export default function Auth({ onSuccess, t, language, setLanguage }) {
             <Sparkles className="w-3.5 h-3.5" /> {t("app_tagline")}
           </p>
         </div>
+
+        {deviceLimitWarning && (
+          <div className="mb-4 text-sm font-medium text-amber-100 bg-amber-500/20 border border-amber-300/25 rounded-2xl px-4 py-3 text-center">
+            {deviceLimitWarning}
+          </div>
+        )}
 
         <div
           className="rounded-[28px] bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-7"
@@ -163,7 +169,17 @@ export default function Auth({ onSuccess, t, language, setLanguage }) {
           </form>
         </div>
 
-        <p className="text-center text-[11px] text-white/50 mt-6 leading-relaxed px-4">{t("auth_terms")}</p>
+        <p className="text-center text-[11px] text-white/50 mt-6 leading-relaxed px-4">
+          {t("auth_terms")}{" "}
+          <a
+            href={language === "kk" ? "/privacy-kk.html" : "/privacy.html"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-white/70 hover:text-white"
+          >
+            {t("privacy_policy_link")}
+          </a>
+        </p>
       </div>
     </div>
   );
