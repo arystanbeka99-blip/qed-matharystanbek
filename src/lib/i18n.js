@@ -47,7 +47,7 @@ export const TRANSLATIONS = {
     welcome_title: "QED Math Space",
     welcome_desc: "Все ваши уроки, планы и игры — в одном премиальном пространстве.",
     view_materials: "Смотреть материалы",
-    exam_badge: "Аттестация · ЕНТ",
+    exam_badge: "Итоговая аттестация",
     exam_title: "Подготовка к экзаменам",
     exam_desc: "Варианты, разборы заданий и тренажёры для выпускных классов.",
     open_section: "Открыть раздел",
@@ -103,7 +103,7 @@ export const TRANSLATIONS = {
     pro_feature_ksp: "КСП/КТП по всем четвертям",
     pro_feature_games: "Интерактивные игры и тренажёры",
     pro_feature_reflection: "Инструменты рефлексии для класса",
-    pro_feature_ent: "Бонус: подготовка к ЕНТ (9 класс)",
+    pro_feature_ent: "Бонус: подготовка к итоговой аттестации (9 класс)",
     pro_feature_weekly: "Новые материалы каждую неделю",
     pro_whatsapp_button: "Написать для оплаты в WhatsApp",
     pro_whatsapp_loading: "Открываем WhatsApp...",
@@ -123,6 +123,7 @@ export const TRANSLATIONS = {
     pro_corporate_emails_label: "Почты коллег (до 3 учителей одной школы)",
     pro_corporate_emails_placeholder: "coleague1@mail.ru, coleague2@mail.ru",
     pro_corporate_note: "Доступ откроется всем указанным учителям после подтверждения оплаты",
+    pro_grade9_bonus_badge: "+бонус",
 
     // Профиль
     profile_joined: "В команде с",
@@ -136,6 +137,7 @@ export const TRANSLATIONS = {
     profile_valid_until: "Действует до",
     profile_privacy_note: "Ваши данные защищены и не передаются третьим лицам",
     profile_language: "Язык интерфейса",
+    profile_language_locked_note: "Язык закреплён при регистрации и не может быть изменён — это разделяет доступ к материалам на разных языках",
 
     // Мобильная навигация
     nav_home: "Главная",
@@ -187,7 +189,7 @@ export const TRANSLATIONS = {
     welcome_title: "QED Math Space",
     welcome_desc: "Барлық сабақтарыңыз, жоспарларыңыз және ойындарыңыз — бір премиум кеңістікте.",
     view_materials: "Материалдарды қарау",
-    exam_badge: "Аттестация · ҰБТ",
+    exam_badge: "Қорытынды аттестация",
     exam_title: "Емтихандарға дайындық",
     exam_desc: "9 сыныпқа арналған тапсырмалар жинағы.",
     open_section: "Бөлімді ашу",
@@ -243,7 +245,7 @@ export const TRANSLATIONS = {
     pro_feature_ksp: "Барлық тоқсандарға ҚМЖ/КТЖ",
     pro_feature_games: "Интерактивті ойындар мен жаттықтырғыштар",
     pro_feature_reflection: "Сыныпқа арналған рефлексия құралдары",
-    pro_feature_ent: "Бонус: ҰБТ-ға дайындық (9 сынып)",
+    pro_feature_ent: "Бонус: қорытынды аттестацияға дайындық (9 сынып)",
     pro_feature_weekly: "Аптасайын жаңа материалдар",
     pro_whatsapp_button: "Төлем үшін WhatsApp-қа жазу",
     pro_whatsapp_loading: "WhatsApp ашылуда...",
@@ -263,6 +265,7 @@ export const TRANSLATIONS = {
     pro_corporate_emails_label: "Әріптестер поштасы (бір мектептің 3 мұғаліміне дейін)",
     pro_corporate_emails_placeholder: "colleague1@mail.ru, colleague2@mail.ru",
     pro_corporate_note: "Төлем расталғаннан кейін көрсетілген барлық мұғалімдерге қолжетімділік ашылады",
+    pro_grade9_bonus_badge: "+бонус",
 
     // Профиль
     profile_joined: "Қосылған күні",
@@ -276,6 +279,7 @@ export const TRANSLATIONS = {
     profile_valid_until: "Мерзімі",
     profile_privacy_note: "Деректеріңіз қорғалған және үшінші тұлғаларға берілмейді",
     profile_language: "Интерфейс тілі",
+    profile_language_locked_note: "Тіл тіркелу кезінде бекітіледі және өзгертілмейді — бұл әртүрлі тілдегі материалдарға қолжетімділікті бөледі",
 
     // Мобильді навигация
     nav_home: "Басты бет",
