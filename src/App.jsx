@@ -3,7 +3,7 @@ import {
   Search, Bell, User, ChevronRight, Sparkles, GraduationCap,
   PlayCircle, FileText, Gamepad2, MessageCircleHeart, Lock,
   Check, Snowflake, Flower2, Sun, Leaf, ArrowLeft, Crown,
-  Star, Zap, ShieldCheck, Menu, X, LayoutGrid, BookOpen, ClipboardList, Download,
+  Star, Zap, ShieldCheck, Menu, X, LayoutGrid, BookOpen, ClipboardList, Download, Target,
 } from "lucide-react";
 import { useSubscription } from "./hooks/useSubscription";
 import { useLanguage } from "./hooks/useLanguage";
@@ -22,6 +22,7 @@ import Auth from "./components/Auth";
    ============================================================ */
 const GRAD_MAIN = "bg-gradient-to-br from-[#4F46E5] to-[#A855F7]";
 const GRAD_EXAM = "bg-gradient-to-br from-[#FF6B4A] to-[#FFA800]";
+const GRAD_SOR = "bg-gradient-to-br from-[#F43F5E] to-[#FB923C]";
 
 const GRADES = [5, 6, 7, 8, 9, 10, 11];
 
@@ -39,6 +40,7 @@ const MATERIAL_TYPES = [
   { id: "reflection", labelKey: "type_reflection", descKey: "type_reflection_desc", icon: MessageCircleHeart, tint: "from-purple-500 to-indigo-500", soft: "bg-purple-50" },
   { id: "textbooks", labelKey: "type_textbooks", descKey: "type_textbooks_desc", icon: BookOpen, tint: "from-teal-500 to-emerald-500", soft: "bg-teal-50" },
   { id: "worksheets", labelKey: "type_worksheets", descKey: "type_worksheets_desc", icon: ClipboardList, tint: "from-sky-500 to-cyan-500", soft: "bg-sky-50" },
+  { id: "sor_soch", labelKey: "type_sor_soch", descKey: "type_sor_soch_desc", icon: Target, tint: "from-rose-500 to-orange-500", soft: "bg-rose-50" },
 ];
 
 // Демо-данные (в проде — fetchMaterials() из lib/supabaseClient.js)
@@ -235,7 +237,7 @@ function Dashboard({ onOpenMaterials, onOpenPaywall, t }) {
 
   return (
     <div className="space-y-7 sm:space-y-8 pb-20 sm:pb-0">
-      <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
+      <div className="grid md:grid-cols-3 gap-4 sm:gap-5">
         <div
           className={`relative overflow-hidden rounded-3xl ${GRAD_MAIN} p-6 sm:p-8 flex flex-col justify-between min-h-[170px] sm:min-h-[190px]`}
           style={{ boxShadow: "0 20px 45px -18px rgba(79,70,229,0.55)" }}
@@ -272,6 +274,26 @@ function Dashboard({ onOpenMaterials, onOpenPaywall, t }) {
           <button
             onClick={() => onOpenMaterials(9, null, null)}
             className="relative z-10 self-start mt-4 bg-white text-[#FF6B4A] font-semibold text-sm px-5 py-2.5 rounded-2xl flex items-center gap-1.5 hover:bg-white/90 transition-colors"
+          >
+            {t("open_section")} <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div
+          className={`relative overflow-hidden rounded-3xl ${GRAD_SOR} p-6 sm:p-8 flex flex-col justify-between min-h-[170px] sm:min-h-[190px]`}
+          style={{ boxShadow: "0 20px 45px -18px rgba(244,63,94,0.45)" }}
+        >
+          <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10" />
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 bg-white/15 rounded-2xl px-3 py-1.5 text-white text-xs font-medium mb-3 sm:mb-4">
+              <Target className="w-3.5 h-3.5" /> {t("sor_badge")}
+            </div>
+            <h2 className="text-white text-xl sm:text-2xl font-bold tracking-tight mb-1.5">{t("sor_title")}</h2>
+            <p className="text-white/85 text-sm max-w-sm">{t("sor_desc")}</p>
+          </div>
+          <button
+            onClick={() => onOpenMaterials(null, null, "sor_soch")}
+            className="relative z-10 self-start mt-4 bg-white text-[#F43F5E] font-semibold text-sm px-5 py-2.5 rounded-2xl flex items-center gap-1.5 hover:bg-white/90 transition-colors"
           >
             {t("open_section")} <ChevronRight className="w-4 h-4" />
           </button>
@@ -449,7 +471,10 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
     if (item.canvaUrl) return onOpenCanva(item);
     if (item.gameId) return onOpenGame(item.gameId);
     if (item.toolId) return onOpenTool(item.toolId);
-    if (item.fileUrl) return onOpenFile(item);
+    // Игры и рефлексии на HTML открываются только внутри платформы —
+    // без кнопки "открыть в новой вкладке", чтобы файл нельзя было
+    // легко сохранить и распространить отдельно от сайта.
+    if (item.fileUrl) return onOpenFile({ ...item, allowExternalOpen: !["games", "reflection", "sor_soch"].includes(activeType) });
   };
 
   return (
@@ -555,7 +580,7 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
                 >
                   <Lock className="w-3.5 h-3.5" /> {t("open_by_subscription")}
                 </button>
-              ) : activeType === "worksheets" || activeType === "ksp" ? (
+              ) : activeType === "worksheets" || activeType === "ksp" || activeType === "textbooks" ? (
                 <div className="mt-1 flex gap-2">
                   <button
                     onClick={() => handleOpen(item)}
@@ -591,8 +616,9 @@ function MaterialsPage({ initialType, initialGrade, initialQuarter, isPro, subsc
    ============================================================ */
 
 const PRICING_TIERS = [
-  { id: "half_year", labelKey: "tariff_half_year", price: "45 000 ₸", priceValue: 45000, perMonth: "7 500 ₸ / мес", months: 6, badgeKey: "tariff_badge_discount" },
-  { id: "year", labelKey: "tariff_year", price: "100 000 ₸", priceValue: 100000, perMonth: "8 333 ₸ / мес", months: 12, badgeKey: "tariff_badge_popular" },
+  { id: "half_year", labelKey: "tariff_half_year", price: "45 000 ₸", priceValue: 45000, perMonth: "7 500 ₸ / мес", months: 6, maxGrades: 4, seats: 1, badgeKey: "tariff_badge_discount" },
+  { id: "year", labelKey: "tariff_year", price: "100 000 ₸", priceValue: 100000, perMonth: "8 333 ₸ / мес", months: 12, maxGrades: 4, seats: 1, badgeKey: "tariff_badge_popular" },
+  { id: "corporate", labelKey: "tariff_corporate", price: "150 000 ₸", priceValue: 150000, perMonth: "12 500 ₸ / мес", months: 12, maxGrades: 5, seats: 3, badgeKey: "tariff_badge_corporate" },
 ];
 
 /**
@@ -625,11 +651,23 @@ const ADMIN_WHATSAPP = "77767844108";
 function Paywall({ onBack, t }) {
   const [plan, setPlan] = useState("half_year");
   const [selectedGrades, setSelectedGrades] = useState([]);
+  const [teammateEmails, setTeammateEmails] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const currentTier = PRICING_TIERS.find((p) => p.id === plan);
+  const maxGrades = currentTier?.maxGrades ?? 4;
+
   const toggleGrade = (g) => {
-    setSelectedGrades((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+    setSelectedGrades((prev) => {
+      if (prev.includes(g)) return prev.filter((x) => x !== g);
+      if (prev.length >= maxGrades) {
+        setError(`${t("pro_max_grades_prefix")} ${maxGrades} ${t("grade_label")}${t("pro_max_grades_suffix")}`);
+        return prev;
+      }
+      setError(null);
+      return [...prev, g];
+    });
   };
 
   const featureKeys = [
@@ -647,6 +685,8 @@ function Paywall({ onBack, t }) {
    * После получения оплаты откройте доступ вручную:
    * Supabase → Table Editor → subscriptions → Insert row
    * (user_id учителя, plan, grades, status: active, current_period_end).
+   * Для корпоративного тарифа создайте по такой же записи для каждого
+   * из до 3 учителей, указанных в сообщении.
    */
   const handleCheckout = async () => {
     setError(null);
@@ -665,11 +705,15 @@ function Paywall({ onBack, t }) {
       }
 
       const tier = PRICING_TIERS.find((p) => p.id === plan);
-      const message =
+      let message =
         `Здравствуйте! Хочу оформить подписку QED PRO.\n` +
         `Тариф: ${t(tier.labelKey)} (${tier.price})\n` +
         `Классы: ${selectedGrades.sort((a, b) => a - b).join(", ")}\n` +
         `Моя почта на сайте: ${user.email}`;
+
+      if (plan === "corporate" && teammateEmails.trim()) {
+        message += `\nПочты коллег (до 3 учителей одной школы): ${teammateEmails.trim()}`;
+      }
 
       const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
       window.open(url, "_blank");
@@ -695,7 +739,7 @@ function Paywall({ onBack, t }) {
       </div>
 
       {/* Тарифы по длительности */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {PRICING_TIERS.map((p) => {
           const active = plan === p.id;
           return (
@@ -723,7 +767,9 @@ function Paywall({ onBack, t }) {
       {/* Выбор классов */}
       <div className="rounded-3xl bg-white border border-slate-100 p-5">
         <h3 className="font-bold text-slate-800 text-sm mb-1">{t("pro_which_grades")}</h3>
-        <p className="text-xs text-slate-400 mb-3.5">{t("pro_which_grades_desc")}</p>
+        <p className="text-xs text-slate-400 mb-3.5">
+          {t("pro_max_grades_prefix")} {maxGrades} {t("grade_label")}{t("pro_max_grades_suffix")} · {selectedGrades.length}/{maxGrades}
+        </p>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
           {GRADES.map((g) => {
             const active = selectedGrades.includes(g);
@@ -741,6 +787,20 @@ function Paywall({ onBack, t }) {
             );
           })}
         </div>
+
+        {plan === "corporate" && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">{t("pro_corporate_emails_label")}</label>
+            <input
+              type="text"
+              value={teammateEmails}
+              onChange={(e) => setTeammateEmails(e.target.value)}
+              placeholder={t("pro_corporate_emails_placeholder")}
+              className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-300"
+            />
+            <p className="text-[11px] text-slate-400 mt-1.5">{t("pro_corporate_note")}</p>
+          </div>
+        )}
       </div>
 
       <div className="rounded-3xl bg-white border border-slate-100 p-5 sm:p-7" style={{ boxShadow: "0 20px 45px -25px rgba(79,70,229,0.35)" }}>
@@ -794,6 +854,7 @@ export default function App() {
   const [activeGame, setActiveGame] = useState(null);
   const [activeTool, setActiveTool] = useState(null);
   const [session, setSession] = useState(undefined); // undefined = проверяется, null = не авторизован
+  const [deviceLimitExceeded, setDeviceLimitExceeded] = useState(false);
 
   const { isPro, plan, periodEnd, grades: subscribedGrades, examPrepBonus } = useSubscription();
   const { language, languageChosen, setLanguage, t } = useLanguage();
@@ -803,6 +864,33 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  // Защита от расшаривания аккаунта: после каждого входа проверяем,
+  // сколько устройств сейчас одновременно используют этот же аккаунт.
+  // Если больше, чем разрешено тарифом учителя (max_devices в profiles),
+  // выходим из системы и показываем предупреждение.
+  React.useEffect(() => {
+    if (!session?.user?.id) {
+      setDeviceLimitExceeded(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const uid = session.user.id;
+      const [{ data: profileRow }, { data: sessionCount }] = await Promise.all([
+        supabase.from("profiles").select("max_devices").eq("id", uid).maybeSingle(),
+        supabase.rpc("count_active_sessions", { p_user_id: uid }),
+      ]);
+      const limit = profileRow?.max_devices ?? 2;
+      if (!cancelled && typeof sessionCount === "number" && sessionCount > limit) {
+        setDeviceLimitExceeded(true);
+        await supabase.auth.signOut();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   const openMaterials = (grade, quarter, type) => {
     setMaterialsFilter({ grade, quarter, type });
@@ -821,7 +909,15 @@ export default function App() {
 
   // Не авторизован — показываем экран входа/регистрации вместо всего приложения
   if (session === null) {
-    return <Auth onSuccess={() => {}} t={t} language={language} setLanguage={setLanguage} />;
+    return (
+      <Auth
+        onSuccess={() => {}}
+        t={t}
+        language={language}
+        setLanguage={setLanguage}
+        deviceLimitWarning={deviceLimitExceeded ? t("device_limit_warning") : null}
+      />
+    );
   }
 
   if (view === "game") {
@@ -920,6 +1016,7 @@ export default function App() {
         open={Boolean(fileItem)}
         title={fileItem?.title}
         fileUrl={fileItem?.fileUrl}
+        allowExternalOpen={fileItem?.allowExternalOpen ?? true}
         onClose={() => setFileItem(null)}
       />
     </div>
