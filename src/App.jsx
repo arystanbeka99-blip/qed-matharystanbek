@@ -782,7 +782,7 @@ function Paywall({ onBack, t }) {
                 }`}
               >
                 <span className="text-sm font-bold">{g}</span>
-                {g === 9 && <span className={`text-[8px] font-semibold ${active ? "text-white/80" : "text-amber-500"}`}>+ЕНТ</span>}
+                {g === 9 && <span className={`text-[8px] font-semibold ${active ? "text-white/80" : "text-amber-500"}`}>{t("pro_grade9_bonus_badge")}</span>}
               </button>
             );
           })}
